@@ -32,38 +32,32 @@ describe('ProfileScreen — sair', () => {
     globalThis.confirm = originalConfirm
   })
 
-  it('faz logout quando a usuária confirma no navegador', () => {
-    globalThis.confirm = jest.fn(() => true)
-    const { getByText } = render(<ProfileScreen navigation={{ navigate: jest.fn() }} />)
+  it('pede confirmação antes de sair', () => {
+    const { getByText, queryByText } = render(<ProfileScreen navigation={{ navigate: jest.fn() }} />)
+    expect(queryByText('Deseja sair?')).toBeNull()
 
     fireEvent.press(getByText('Sair'))
 
-    expect(globalThis.confirm).toHaveBeenCalledWith('Tem certeza que deseja sair?')
-    expect(logout).toHaveBeenCalledTimes(1)
-  })
-
-  it('mantém a sessão quando a usuária cancela no navegador', () => {
-    globalThis.confirm = jest.fn(() => false)
-    const { getByText } = render(<ProfileScreen navigation={{ navigate: jest.fn() }} />)
-
-    fireEvent.press(getByText('Sair'))
-
+    expect(getByText('Deseja sair?')).toBeTruthy()
     expect(logout).not.toHaveBeenCalled()
   })
 
-  it('mantém a confirmação nativa no Android', () => {
-    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'android' })
-    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {})
+  it('faz logout quando a usuária confirma', () => {
     const { getByText } = render(<ProfileScreen navigation={{ navigate: jest.fn() }} />)
 
     fireEvent.press(getByText('Sair'))
+    fireEvent.press(getByText('Sair da conta'))
 
-    expect(alert).toHaveBeenCalledWith(
-      'Sair',
-      'Tem certeza que deseja sair?',
-      expect.any(Array)
-    )
-    alert.mock.calls[0][2][1].onPress()
     expect(logout).toHaveBeenCalledTimes(1)
+  })
+
+  it('mantém a sessão quando a usuária cancela', () => {
+    const { getByText, queryByText } = render(<ProfileScreen navigation={{ navigate: jest.fn() }} />)
+
+    fireEvent.press(getByText('Sair'))
+    fireEvent.press(getByText('Cancelar'))
+
+    expect(logout).not.toHaveBeenCalled()
+    expect(queryByText('Deseja sair?')).toBeNull()
   })
 })

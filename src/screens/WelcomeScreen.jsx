@@ -1,72 +1,64 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
+import { useEffect, useRef, useState } from 'react'
+import { Animated, View, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Icon } from '../components/Icon'
+import { Copyright } from '../components/Copyright'
+import { Loader } from '../components/Loader'
+import { colors, fonts } from '../theme'
+
+// text: null = loader
+const STEPS = [
+  { text: null,        duration: 5000 },
+  { text: 'Olá',       duration: 3000 },
+  { text: 'Bem-Vinda', duration: 4000 },
+]
+const FADE_MS = 300
 
 export default function WelcomeScreen({ navigation }) {
+  const [step, setStep] = useState(0)
+  const opacity = useRef(new Animated.Value(0)).current
+  const { text, duration } = STEPS[step]
+
+  // Mostra cada etapa pelo seu tempo e, depois da última, segue para a Home.
+  useEffect(() => {
+    const last = step === STEPS.length - 1
+    const fades = text !== null
+    if (fades) Animated.timing(opacity, { toValue: 1, duration: FADE_MS, useNativeDriver: true }).start()
+
+    const timer = setTimeout(() => {
+      if (last) { navigation.replace('Main'); return }
+      if (!fades) { setStep(step + 1); return }
+      Animated.timing(opacity, { toValue: 0, duration: FADE_MS, useNativeDriver: true })
+        .start(() => setStep(step + 1))
+    }, last || !fades ? duration : duration - FADE_MS)
+
+    return () => clearTimeout(timer)
+  }, [step, text, duration, navigation, opacity])
+
+  // Mesmo enquadramento do loader do AppNavigator, para não haver salto entre os dois.
+  if (text === null) {
+    return (
+      <View style={styles.loading}>
+        <Loader />
+      </View>
+    )
+  }
+
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <LinearGradient colors={['#EC407A', '#FF6FAD']} style={styles.screen}>
-        {/* Círculos decorativos */}
-        <View style={styles.circle1} />
-        <View style={styles.circle2} />
-
-        <View />
-
-        <View style={styles.center}>
-          <View style={styles.iconWrap}>
-            <Icon name="baby" color="#fff" size={50} />
-          </View>
-          <Text style={styles.title}>Olá, mamãe!</Text>
-          <Text style={styles.subtitle}>
-            O BabyBuddy vai te acompanhar em cada semana especial da sua gravidez com muito carinho.
-          </Text>
-        </View>
-
-        <View style={styles.bottom}>
-          <TouchableOpacity
-            style={styles.btn}
-            onPress={() => navigation.replace('Main')}
-          >
-            <Text style={styles.btnText}>Começar agora</Text>
-          </TouchableOpacity>
-          <Text style={styles.footer}>BabyBuddy · Feito para você</Text>
-        </View>
-      </LinearGradient>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.center}>
+        <Animated.Text style={[styles.title, { opacity }]} accessibilityRole="header">
+          {text}
+        </Animated.Text>
+      </View>
+      <Copyright style={styles.copyright} />
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 28, justifyContent: 'space-between', overflow: 'hidden' },
-  circle1: {
-    position: 'absolute', top: -60, right: -60,
-    width: 220, height: 220, borderRadius: 110,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-  },
-  circle2: {
-    position: 'absolute', bottom: -40, left: -50,
-    width: 180, height: 180, borderRadius: 90,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-  },
-  center: { alignItems: 'center' },
-  iconWrap: {
-    width: 110, height: 110, borderRadius: 55,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.35)',
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 28,
-  },
-  title: { fontSize: 28, fontWeight: '900', color: '#fff', marginBottom: 12, letterSpacing: 0.3 },
-  subtitle: {
-    fontSize: 13, color: 'rgba(255,255,255,0.88)', fontWeight: '600',
-    lineHeight: 22, textAlign: 'center', maxWidth: 260,
-  },
-  bottom: { alignItems: 'center', gap: 14 },
-  btn: {
-    backgroundColor: '#fff', borderRadius: 50,
-    paddingVertical: 16, paddingHorizontal: 48, width: '100%', alignItems: 'center',
-  },
-  btnText: { color: '#EC407A', fontWeight: '900', fontSize: 15 },
-  footer: { fontSize: 10, color: 'rgba(255,255,255,0.45)', fontWeight: '800' },
+  loading:   { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
+  safe:      { flex: 1, backgroundColor: colors.background },
+  center:    { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  title:     { fontSize: 40, fontFamily: fonts.bold, color: colors.primary, textAlign: 'center' },
+  copyright: { marginTop: 0, marginBottom: 16 },
 })

@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useApp } from '../context/AppContext'
 import { Icon } from '../components/Icon'
+import { Copyright } from '../components/Copyright'
+import { colors, fonts, radius } from '../theme'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
@@ -18,26 +19,28 @@ export default function LoginScreen({ navigation }) {
   const [showPass, setShowPass] = useState(false)
   const [emailErr, setEmailErr] = useState('')
   const [passErr, setPassErr]   = useState('')
+  const [focused, setFocused]   = useState(null)
+  const passRef = useRef(null)
 
   function validateEmail(v) {
-    if (!v.trim()) return 'E-mail obrigatório'
-    if (!EMAIL_RE.test(v)) return 'Formato inválido (ex: nome@email.com)'
+    if (!v.trim()) return 'Digite seu e-mail.'
+    if (!EMAIL_RE.test(v.trim())) return 'Digite um e-mail válido.'
     return ''
   }
 
-async function handleLogin() {
-  const eErr = validateEmail(email)
-  setEmailErr(eErr)
-  if (eErr) return
+  async function handleLogin() {
+    const eErr = validateEmail(email)
+    const pErr = pass ? '' : 'Digite sua senha.'
+    setEmailErr(eErr)
+    setPassErr(pErr)
+    if (eErr || pErr) return
 
-  if (!pass) { setPassErr('Senha obrigatória'); return }
-  setPassErr('')
-  setAuthError('')
+    setAuthError('')
 
-  // Apenas espere a função terminar. Se der 'ok', o contexto muda o estado
-  // e o AppNavigator te joga para a tela correta automaticamente!
-  await login(email, pass)
-}
+    // Apenas espere a função terminar. Se der 'ok', o contexto muda o estado
+    // e o AppNavigator te joga para a tela correta automaticamente!
+    await login(email, pass)
+  }
 
   function goToRegister() {
     setAuthError('')
@@ -47,78 +50,114 @@ async function handleLogin() {
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-
-          {/* Header */}
-          <LinearGradient colors={['#EC407A', '#FF6FAD']} style={styles.header}>
-            <View style={styles.iconCircle}>
-              <Icon name="baby" color="#fff" size={32} />
-            </View>
-            <Text style={styles.title}>BabyBuddy</Text>
-            <Text style={styles.subtitle}>Bem-vinda de volta!</Text>
-          </LinearGradient>
-
-          <View style={styles.body}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.card}>
+            <Text style={styles.title} accessibilityRole="header">Login</Text>
+            <Text style={styles.subtitle}>Digite seus dados para acessar sua conta</Text>
 
             {/* Erro do backend */}
             {!!authError && (
-              <View style={styles.errorBox}>
+              <View style={styles.errorBox} accessibilityRole="alert">
                 <Text style={styles.errorBoxText}>{authError}</Text>
               </View>
             )}
 
             {/* E-mail */}
-            <Text style={styles.label}>E-MAIL</Text>
-            <TextInput
-              style={[styles.input, emailErr ? styles.inputErr : null]}
-              placeholder="seu@email.com"
-              placeholderTextColor="#C9A8B5"
-              value={email}
-              onChangeText={v => { setEmail(v); setEmailErr('') }}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              onSubmitEditing={handleLogin}
-            />
+            <Text style={styles.label}>E-mail</Text>
+            <View style={[styles.field, focused === 'email' && styles.fieldFocus, !!emailErr && styles.fieldErr]}>
+              <Icon name="mail" color={focused === 'email' ? colors.primary : colors.gray} size={18} />
+              <TextInput
+                style={styles.input}
+                placeholder="E-mail"
+                placeholderTextColor={colors.grayLight}
+                value={email}
+                onChangeText={v => { setEmail(v); setEmailErr('') }}
+                onFocus={() => setFocused('email')}
+                onBlur={() => setFocused(null)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                textContentType="username"
+                returnKeyType="next"
+                onSubmitEditing={() => passRef.current?.focus()}
+                accessibilityLabel="E-mail"
+              />
+            </View>
             {!!emailErr && <Text style={styles.errText}>{emailErr}</Text>}
 
             {/* Senha */}
-            <Text style={styles.label}>SENHA</Text>
-            <View style={styles.passRow}>
+            <Text style={[styles.label, styles.labelGap]}>Senha</Text>
+            <View style={[styles.field, focused === 'pass' && styles.fieldFocus, !!passErr && styles.fieldErr]}>
+              <Icon name="lock" color={focused === 'pass' ? colors.primary : colors.gray} size={18} />
               <TextInput
-                style={[styles.input, { flex: 1 }, passErr ? styles.inputErr : null]}
-                placeholder="••••••••"
-                placeholderTextColor="#C9A8B5"
+                ref={passRef}
+                style={styles.input}
+                placeholder="Senha"
+                placeholderTextColor={colors.grayLight}
                 value={pass}
                 onChangeText={v => { setPass(v); setPassErr(''); setAuthError('') }}
+                onFocus={() => setFocused('pass')}
+                onBlur={() => setFocused(null)}
                 secureTextEntry={!showPass}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="current-password"
+                textContentType="password"
+                returnKeyType="done"
                 onSubmitEditing={handleLogin}
+                accessibilityLabel="Senha"
               />
-              <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPass(s => !s)}>
-                <Text style={styles.eyeText}>{showPass ? 'ocultar' : 'ver'}</Text>
+              <TouchableOpacity
+                onPress={() => setShowPass(s => !s)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityRole="button"
+                accessibilityLabel={showPass ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                <Icon name={showPass ? 'eyeOff' : 'eye'} color={colors.gray} size={19} />
               </TouchableOpacity>
             </View>
             {!!passErr && <Text style={styles.errText}>{passErr}</Text>}
 
-            {/* Botão entrar */}
+            {/* Botão login */}
             <TouchableOpacity
-              style={[styles.btnPrimary, authLoading && { backgroundColor: '#FFB7CD' }]}
+              style={[styles.btnPrimary, authLoading && { backgroundColor: colors.primarySoft }]}
               onPress={handleLogin}
               disabled={authLoading}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Login"
             >
               {authLoading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.btnPrimaryText}>Entrar</Text>
+                ? <ActivityIndicator color={colors.white} />
+                : <Text style={styles.btnPrimaryText}>Login</Text>
               }
             </TouchableOpacity>
 
-            {/* Link para cadastro */}
-            <TouchableOpacity style={styles.btnOutline} onPress={goToRegister}>
-              <Text style={styles.btnOutlineText}>Criar nova conta</Text>
-            </TouchableOpacity>
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>ou</Text>
+              <View style={styles.dividerLine} />
+            </View>
 
+            {/* Link para cadastro */}
+            <View style={styles.registerRow}>
+              <Text style={styles.registerText}>Ainda não tem uma conta? </Text>
+              <TouchableOpacity
+                onPress={goToRegister}
+                hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                accessibilityRole="link"
+              >
+                <Text style={styles.registerLink}>Cadastre-se</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <Text style={styles.footer}>BabyBuddy · Seus dados, sempre seguros</Text>
+          <Copyright />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -126,46 +165,49 @@ async function handleLogin() {
 }
 
 const styles = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: '#fff' },
-  scroll: { flexGrow: 1 },
-  header: {
-    padding: 36, paddingBottom: 40,
-    borderBottomLeftRadius: 32, borderBottomRightRadius: 32,
-    alignItems: 'center', gap: 8,
+  safe:   { flex: 1, backgroundColor: colors.background },
+  scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  card: {
+    width: '100%', maxWidth: 440,
+    backgroundColor: colors.white, borderRadius: 24,
+    paddingHorizontal: 22, paddingVertical: 28,
+    shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
   },
-  iconCircle: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    alignItems: 'center', justifyContent: 'center',
+  title:    { fontSize: 34, color: colors.ink, fontFamily: fonts.bold, textAlign: 'center' },
+  subtitle: {
+    fontSize: 14, lineHeight: 19, color: colors.gray, fontFamily: fonts.medium,
+    textAlign: 'center', marginTop: 4, marginBottom: 22,
   },
-  title:    { fontSize: 22, color: '#fff', fontWeight: '900', letterSpacing: 0.5 },
-  subtitle: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
-  body:     { flex: 1, padding: 28, gap: 10 },
   errorBox: {
-    backgroundColor: '#fff0f3', borderWidth: 1.5, borderColor: '#FFB7CD',
-    borderRadius: 12, padding: 10,
+    backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.primarySoft,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 16,
   },
-  errorBoxText: { fontSize: 12, color: '#E53935', fontWeight: '700' },
-  label:    { fontSize: 10, fontWeight: '900', color: '#A07080', letterSpacing: 1, marginTop: 6 },
+  errorBoxText: { fontSize: 13, color: colors.danger, fontFamily: fonts.semiBold, textAlign: 'center' },
+  label:    { fontSize: 14, color: colors.inkSoft, fontFamily: fonts.semiBold, marginBottom: 6 },
+  labelGap: { marginTop: 14 },
+  field: {
+    height: 52, flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderWidth: 1, borderColor: colors.line, borderRadius: radius.input,
+    paddingHorizontal: 14, backgroundColor: colors.white,
+  },
+  fieldFocus: { borderColor: colors.primary },
+  fieldErr:   { borderColor: colors.danger },
   input: {
-    backgroundColor: '#FFF5F8', borderWidth: 1.5, borderColor: '#F5DAE4',
-    borderRadius: 50, paddingHorizontal: 18, paddingVertical: 13,
-    fontSize: 13, color: '#2D1220', fontWeight: '600',
+    flex: 1, minWidth: 0, height: '100%', padding: 0,
+    fontSize: 15, color: colors.inkSoft, fontFamily: fonts.regular,
+    ...Platform.select({ web: { outlineStyle: 'none' } }),
   },
-  inputErr:    { borderColor: '#E53935', backgroundColor: '#fff5f5' },
-  errText:     { fontSize: 11, color: '#E53935', fontWeight: '700', paddingLeft: 6 },
-  passRow:     { flexDirection: 'row', alignItems: 'center' },
-  eyeBtn:      { position: 'absolute', right: 16 },
-  eyeText:     { fontSize: 11, fontWeight: '800', color: '#C9A8B5' },
+  errText: { fontSize: 12, color: colors.danger, fontFamily: fonts.semiBold, marginTop: 5, paddingLeft: 2 },
   btnPrimary: {
-    backgroundColor: '#EC407A', borderRadius: 50,
-    paddingVertical: 14, alignItems: 'center', marginTop: 8,
+    height: 52, borderRadius: 50, backgroundColor: colors.primary,
+    alignItems: 'center', justifyContent: 'center', marginTop: 22,
   },
-  btnPrimaryText: { color: '#fff', fontSize: 14, fontWeight: '900', letterSpacing: 0.5 },
-  btnOutline: {
-    borderRadius: 50, borderWidth: 1.5, borderColor: '#F5DAE4',
-    paddingVertical: 13, alignItems: 'center',
-  },
-  btnOutlineText: { color: '#EC407A', fontSize: 13, fontWeight: '800' },
-  footer: { textAlign: 'center', fontSize: 12, color: '#C9A8B5', fontWeight: '700', padding: 20 },
+  btnPrimaryText: { color: colors.white, fontSize: 17, fontFamily: fonts.bold },
+  divider:     { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 20, marginBottom: 16 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.line },
+  dividerText: { fontSize: 13, color: colors.gray, fontFamily: fonts.medium },
+  registerRow:  { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' },
+  registerText: { fontSize: 14, color: colors.gray, fontFamily: fonts.medium },
+  registerLink: { fontSize: 14, color: colors.primary, fontFamily: fonts.bold },
 })

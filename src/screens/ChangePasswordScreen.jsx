@@ -3,10 +3,11 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useApp } from '../context/AppContext'
 import { Icon } from '../components/Icon'
+import { Copyright } from '../components/Copyright'
+import { colors, fonts, radius } from '../theme'
 
 function validate(v) {
   if (!v) return 'Senha obrigatória'
@@ -51,15 +52,15 @@ export default function ChangePasswordScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F0F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.grayBg }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <LinearGradient colors={['#EC407A', '#C0255B']} style={styles.header}>
+        <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Icon name="back" color="#fff" size={20} />
+            <Icon name="back" color={colors.black} size={26} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Alterar Senha</Text>
           <View style={{ width: 36 }} />
-        </LinearGradient>
+        </View>
 
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
           {!!apiErr && (
@@ -68,51 +69,61 @@ export default function ChangePasswordScreen({ navigation }) {
             </View>
           )}
 
-          <Text style={styles.label}>NOVA SENHA</Text>
+          <Text style={styles.label}>Nova senha</Text>
           <View style={styles.passRow}>
             <TextInput
               style={[styles.input, { flex: 1 }, passErr ? styles.inputErr : null]}
               placeholder="••••••••"
-              placeholderTextColor="#C9A8B5"
+              placeholderTextColor={colors.blackSoft}
               value={newPass}
               onChangeText={v => { setNewPass(v); setPassErr('') }}
               secureTextEntry={!showNew}
             />
-            <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowNew(s => !s)}>
-              <Text style={styles.eyeText}>{showNew ? 'ocultar' : 'ver'}</Text>
+            <TouchableOpacity
+              style={styles.eyeBtn}
+              onPress={() => setShowNew(s => !s)}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              accessibilityRole="button"
+              accessibilityLabel={showNew ? 'Ocultar senha' : 'Mostrar senha'}
+            >
+              <Icon name={showNew ? 'eyeOff' : 'eye'} color={colors.black} size={19} />
             </TouchableOpacity>
           </View>
           {!!passErr && <Text style={styles.errText}>{passErr}</Text>}
 
-          <Text style={styles.label}>CONFIRMAR NOVA SENHA</Text>
+          <Text style={[styles.label, styles.labelGap]}>Confirmar nova senha</Text>
           <View style={styles.passRow}>
             <TextInput
               style={[styles.input, { flex: 1 }, confErr ? styles.inputErr : null]}
               placeholder="••••••••"
-              placeholderTextColor="#C9A8B5"
+              placeholderTextColor={colors.blackSoft}
               value={confirm}
               onChangeText={v => { setConfirm(v); setConfErr('') }}
               secureTextEntry={!showConf}
             />
-            <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowConf(s => !s)}>
-              <Text style={styles.eyeText}>{showConf ? 'ocultar' : 'ver'}</Text>
+            <TouchableOpacity
+              style={styles.eyeBtn}
+              onPress={() => setShowConf(s => !s)}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              accessibilityRole="button"
+              accessibilityLabel={showConf ? 'Ocultar senha' : 'Mostrar senha'}
+            >
+              <Icon name={showConf ? 'eyeOff' : 'eye'} color={colors.black} size={19} />
             </TouchableOpacity>
           </View>
           {!!confErr && <Text style={styles.errText}>{confErr}</Text>}
 
           <TouchableOpacity
-            style={[styles.saveBtn, (loading || success) && { backgroundColor: success ? '#27AE60' : '#FFB7CD' }]}
+            style={[styles.saveBtn, (loading || success) && { backgroundColor: success ? colors.success : colors.primarySoft }]}
             onPress={handleSave}
             disabled={loading || success}
           >
             {loading
-              ? <ActivityIndicator color="#fff" />
-              : <>
-                  <Icon name={success ? 'check' : 'shield'} color="#fff" size={18} />
-                  <Text style={styles.saveBtnText}>{success ? 'Senha alterada!' : 'Salvar Nova Senha'}</Text>
-                </>
+              ? <ActivityIndicator color={colors.white} />
+              : <Text style={styles.saveBtnText}>{success ? 'Senha alterada!' : 'Salvar senha'}</Text>
             }
           </TouchableOpacity>
+          <Copyright style={styles.copyright} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -122,34 +133,36 @@ export default function ChangePasswordScreen({ navigation }) {
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 16,
+    paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.grayBg,
   },
   backBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: { fontSize: 18, fontWeight: '900', color: '#fff' },
-  body: { padding: 20, gap: 8, paddingBottom: 40 },
+  headerTitle: { fontSize: 18, fontFamily: fonts.extraBold, color: colors.black },
+  body: { flexGrow: 1, padding: 20, paddingTop: 60, paddingBottom: 20 },
+  copyright: { marginTop: 'auto', paddingTop: 24 },
   errorBox: {
-    backgroundColor: '#fff0f3', borderWidth: 1.5, borderColor: '#FFB7CD',
-    borderRadius: 12, padding: 12, marginBottom: 8,
+    backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.primarySoft,
+    borderRadius: radius.input, padding: 12, marginBottom: 16,
   },
-  errorBoxText: { fontSize: 12, color: '#E53935', fontWeight: '700' },
-  label: { fontSize: 10, fontWeight: '900', color: '#A07080', letterSpacing: 1, marginTop: 10 },
+  errorBoxText: { fontSize: 13, color: colors.danger, fontFamily: fonts.semiBold },
+  label: { fontSize: 14, fontFamily: fonts.semiBold, color: colors.black, marginBottom: 3 },
+  labelGap: { marginTop: 16 },
   passRow: { flexDirection: 'row', alignItems: 'center' },
   input: {
-    backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#F5DAE4',
-    borderRadius: 50, paddingHorizontal: 18, paddingVertical: 13,
-    fontSize: 13, color: '#2D1220', fontWeight: '600',
+    height: 50, backgroundColor: colors.white,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1,
+    borderRadius: radius.input, paddingLeft: 14, paddingRight: 46, paddingVertical: 0,
+    fontSize: 15, color: colors.black, fontFamily: fonts.regular,
   },
-  inputErr: { borderColor: '#E53935' },
-  errText: { fontSize: 11, color: '#E53935', fontWeight: '700', paddingLeft: 6 },
-  eyeBtn: { position: 'absolute', right: 16 },
-  eyeText: { fontSize: 11, fontWeight: '800', color: '#C9A8B5' },
+  inputErr: { borderWidth: 1, borderColor: colors.danger },
+  errText: { fontSize: 12, color: colors.danger, fontFamily: fonts.semiBold, marginTop: 5, paddingLeft: 2 },
+  eyeBtn: { position: 'absolute', right: 14 },
   saveBtn: {
-    backgroundColor: '#EC407A', borderRadius: 50,
-    paddingVertical: 15, flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 24,
+    backgroundColor: colors.primary, borderRadius: 25,
+    paddingVertical: 11, minHeight: 42,
+    alignItems: 'center', justifyContent: 'center', marginTop: 28,
   },
-  saveBtnText: { color: '#fff', fontWeight: '900', fontSize: 15 },
+  saveBtnText: { color: colors.white, fontFamily: fonts.extraBold, fontSize: 15 },
 })

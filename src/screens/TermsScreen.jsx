@@ -1,54 +1,82 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Icon } from '../components/Icon'
+import { Copyright } from '../components/Copyright'
+import { colors, fonts } from '../theme'
 
-const SECTIONS = [
-  {
-    title: '1. Aceitação dos termos',
-    text: 'Ao criar uma conta e usar o BabyBuddy, você concorda com estes Termos de Uso. Se não concordar, não utilize o aplicativo.',
-  },
-  {
-    title: '2. Uso permitido',
-    text: 'O BabyBuddy destina-se ao uso pessoal de gestantes para acompanhamento de saúde, lembretes e organização da gravidez. É proibido usar o aplicativo para fins ilícitos ou prejudiciais a terceiros.',
-  },
-  {
-    title: '3. Informações de saúde',
-    text: 'As informações registradas no BabyBuddy (semanas, consultas, peso etc.) são apenas de uso organizacional e não substituem orientação médica profissional. Sempre consulte um médico.',
-  },
-  {
-    title: '4. Conta e segurança',
-    text: 'Você é responsável pela segurança da sua senha e pela sua conta. Em caso de uso não autorizado, notifique-nos imediatamente pelo suporte.',
-  },
-  {
-    title: '5. Alterações nos termos',
-    text: 'Podemos atualizar estes Termos periodicamente. Continuando a usar o aplicativo após as alterações, você aceita os novos termos.',
-  },
-  {
-    title: '6. Contato',
-    text: 'Para esclarecimentos sobre estes Termos de Uso, entre em contato pelo e-mail suporte@babybuddy.com.',
-  },
+// h = título numerado (negrito) · p = parágrafo · b = item de lista
+// c = parágrafo de contato (mais afastado) · e = e-mail (negrito, abre o app de e-mail)
+const CONTENT = [
+  ['p', 'Este Aplicativo é Apenas para Fins Informativos e Não Fornece Aconselhamento Médico.'],
+  ['p', 'Ao acessar ou usar os Sites ou Serviços, você concorda com estes Termos de Utilização (TDU). Se não concordar, não utilize os Sites ou Serviços.'],
+
+  ['h', '1. Finalidade Informativa'],
+  ['b', 'O Site e Serviços oferecem informações sobre saúde infantil, desenvolvimento e nutrição, mas não substituem aconselhamento médico profissional.'],
+  ['b', 'Consulte sempre um pediatra ou profissional de saúde antes de tomar decisões com base no conteúdo do site.'],
+
+  ['h', '2. Obrigações do Utilizador'],
+  ['b', 'Você concorda em usar os Sites e Serviços de forma legal e responsável.'],
+  ['b', 'Não pode copiar, modificar ou distribuir conteúdo sem autorização.'],
+
+  ['h', '3. Privacidade e Segurança'],
+  ['b', 'Nossa Política de Privacidade regula o uso de seus dados.'],
+  ['b', 'Você é responsável por manter sua conta e senha seguras.'],
+
+  ['h', '4. Direitos Autorais'],
+  ['b', 'Se acredita que seu conteúdo foi usado sem autorização, notifique nossa equipe (contato abaixo).'],
+
+  ['h', '5. Limitação de Responsabilidade'],
+  ['b', 'Não garantimos a precisão ou disponibilidade contínua dos Sites/Serviços.'],
+  ['b', 'Não nos responsabilizamos por danos decorrentes do uso ou indisponibilidade dos Sites.'],
+
+  ['h', '6. Alterações nos Termos'],
+  ['b', 'Podemos atualizar estes termos a qualquer momento. O uso continuado significa aceitação das mudanças.'],
+  ['c', 'Contato com a equipe'],
+  ['e', 'Babybuddy159@gmail.com'],
+  ['p', 'Se tiver dúvidas, entre em contato conosco.'],
 ]
 
 export default function TermsScreen({ navigation }) {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F0F5' }}>
-      <LinearGradient colors={['#EC407A', '#C0255B']} style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Icon name="back" color="#fff" size={20} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.grayBg }}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} accessibilityLabel="Voltar">
+          <Icon name="back" color={colors.black} size={26} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Termos de Uso</Text>
         <View style={{ width: 36 }} />
-      </LinearGradient>
+      </View>
 
       <ScrollView contentContainerStyle={styles.body}>
-        <Text style={styles.updated}>Vigência: junho de 2026</Text>
-        {SECTIONS.map(s => (
-          <View key={s.title} style={styles.section}>
-            <Text style={styles.sTitle}>{s.title}</Text>
-            <Text style={styles.sText}>{s.text}</Text>
-          </View>
-        ))}
+        {CONTENT.map(([type, text], i) => {
+          if (type === 'h') {
+            return <Text key={i} style={[styles.heading, styles.headingGap]} accessibilityRole="header">{text}</Text>
+          }
+          if (type === 'e') {
+            return (
+              <View key={i} style={styles.bullet}>
+                <Text style={styles.text}>•</Text>
+                <Text
+                  style={[styles.text, styles.email]}
+                  accessibilityRole="link"
+                  onPress={() => Linking.openURL(`mailto:${text}`).catch(() => {})}
+                >
+                  {text}
+                </Text>
+              </View>
+            )
+          }
+          if (type === 'b') {
+            return (
+              <View key={i} style={styles.bullet}>
+                <Text style={styles.text}>•</Text>
+                <Text style={[styles.text, { flex: 1 }]}>{text}</Text>
+              </View>
+            )
+          }
+          return <Text key={i} style={[styles.text, type === 'c' && styles.contactGap]}>{text}</Text>
+        })}
+        <Copyright />
       </ScrollView>
     </SafeAreaView>
   )
@@ -57,19 +85,18 @@ export default function TermsScreen({ navigation }) {
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 16,
+    paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.grayBg,
   },
   backBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: { fontSize: 18, fontWeight: '900', color: '#fff' },
-  body: { padding: 20, paddingBottom: 40 },
-  updated: { fontSize: 11, color: '#A07080', fontWeight: '600', marginBottom: 16 },
-  section: {
-    backgroundColor: '#fff', borderRadius: 18, padding: 16, marginBottom: 12,
-    shadowColor: '#EC407A', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
-  },
-  sTitle: { fontSize: 13, fontWeight: '900', color: '#2D1220', marginBottom: 8 },
-  sText: { fontSize: 12, color: '#7A5060', fontWeight: '500', lineHeight: 20 },
+  headerTitle: { fontSize: 18, fontFamily: fonts.extraBold, color: colors.black },
+  body: { padding: 20, paddingBottom: 40, gap: 6 },
+  heading:    { fontSize: 16, lineHeight: 22, fontFamily: fonts.bold, color: colors.black, textAlign: 'left' },
+  headingGap: { marginTop: 12 },
+  text:   { fontSize: 14, lineHeight: 21, fontFamily: fonts.regular, color: colors.black, textAlign: 'left' },
+  bullet: { flexDirection: 'row', gap: 8, paddingLeft: 6 },
+  contactGap: { marginTop: 22 },
+  email: { fontFamily: fonts.bold, textDecorationLine: 'underline' },
 })

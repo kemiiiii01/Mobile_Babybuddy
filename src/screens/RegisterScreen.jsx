@@ -1,43 +1,90 @@
-import { useState } from 'react'
+import { forwardRef, useRef, useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useApp } from '../context/AppContext'
 import { Icon } from '../components/Icon'
+import { Copyright } from '../components/Copyright'
+import { colors, fonts, radius } from '../theme'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
-function passStrength(v) {
-  let s = 0
-  if (v.length >= 8)          s++
-  if (/[a-z]/.test(v))        s++
-  if (/[A-Z]/.test(v))        s++
-  if (/[0-9]/.test(v))        s++
-  if (/[^a-zA-Z0-9]/.test(v)) s++
-  return s
+const PASS_RULES = [
+  { label: 'Mínimo 8 caracteres',                 test: v => v.length >= 8 },
+  { label: 'Uma letra maiúscula e uma minúscula', test: v => /[A-Z]/.test(v) && /[a-z]/.test(v) },
+  { label: 'Um número e um caractere especial',   test: v => /[0-9]/.test(v) && /[^a-zA-Z0-9]/.test(v) },
+]
+
+function formatarTelefone(valor) {
+  const d = valor.replace(/\D/g, '').slice(0, 11)
+  if (d.length <= 2) return d
+  const ddd = d.slice(0, 2), resto = d.slice(2)
+  if (resto.length <= 4) return `(${ddd}) ${resto}`
+  const corte = resto.length > 8 ? 5 : 4
+  return `(${ddd}) ${resto.slice(0, corte)}-${resto.slice(corte)}`
 }
-const STRENGTH_LABEL = ['', 'Fraca', 'Razoável', 'Boa', 'Forte', 'Muito forte']
-const STRENGTH_COLOR = ['', '#E53935', '#FF8C00', '#F9A825', '#27AE60', '#1B5E20']
+
+const Field = forwardRef(function Field({ label, icon, error, secure, style, onFocusChange, ...inputProps }, ref) {
+  const [focused, setFocused] = useState(false)
+  const [visible, setVisible] = useState(false)
+
+  return (
+    <View style={style}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={[styles.field, focused && styles.fieldFocus, !!error && styles.fieldErr]}>
+        <Icon name={icon} color={focused ? colors.primary : colors.gray} size={18} />
+        <TextInput
+          ref={ref}
+          style={styles.input}
+          placeholderTextColor={colors.grayLight}
+          onFocus={() => { setFocused(true); onFocusChange?.(true) }}
+          onBlur={() => { setFocused(false); onFocusChange?.(false) }}
+          secureTextEntry={secure && !visible}
+          accessibilityLabel={label}
+          {...inputProps}
+        />
+        {secure && (
+          <TouchableOpacity
+            onPress={() => setVisible(v => !v)}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel={visible ? 'Ocultar senha' : 'Mostrar senha'}
+          >
+            <Icon name={visible ? 'eyeOff' : 'eye'} color={colors.gray} size={19} />
+          </TouchableOpacity>
+        )}
+      </View>
+      {!!error && <Text style={styles.errText}>{error}</Text>}
+    </View>
+  )
+})
 
 export default function RegisterScreen({ navigation }) {
   const { register, authLoading, authError, setAuthError } = useApp()
 
   const [nome, setNome]         = useState('')
   const [email, setEmail]       = useState('')
+  const [telefone, setTelefone] = useState('')
   const [pass, setPass]         = useState('')
   const [confirm, setConfirm]   = useState('')
-  const [showPass, setShowPass] = useState(false)
-  const [showConf, setShowConf] = useState(false)
+  const [aceito, setAceito]     = useState(false)
 
   const [nomeErr, setNomeErr]     = useState('')
   const [emailErr, setEmailErr]   = useState('')
   const [passErr, setPassErr]     = useState('')
   const [confErr, setConfErr]     = useState('')
+  const [aceitoErr, setAceitoErr] = useState('')
 
-  const strength = passStrength(pass)
+  const emailRef = useRef(null)
+  const telRef   = useRef(null)
+  const passRef  = useRef(null)
+  const confRef  = useRef(null)
+
+  const [passFocused, setPassFocused] = useState(false)
+  const passChecks = PASS_RULES.map(r => r.test(pass))
+  const showPassRules = passFocused || (pass.length > 0 && passChecks.includes(false))
 
   function validateAll() {
     let ok = true
@@ -70,142 +117,186 @@ export default function RegisterScreen({ navigation }) {
       setConfErr('As senhas não coincidem'); ok = false
     } else setConfErr('')
 
+    if (!aceito) {
+      setAceitoErr('Aceite os termos para continuar.'); ok = false
+    } else setAceitoErr('')
+
     return ok
   }
 
-async function handleRegister() {
-  setAuthError('')
-  if (!validateAll()) return
-  
-  // Remova a linha do navigation.replace daqui também
-  await register(nome.trim(), email.trim(), pass)
-}
+  async function handleRegister() {
+    setAuthError('')
+    if (!validateAll()) return
+
+    // Remova a linha do navigation.replace daqui também
+    await register(nome.trim(), email.trim(), pass)
+  }
+
+  function goToLogin() {
+    setAuthError('')
+    navigation.goBack()
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-
-          {/* Header */}
-          <LinearGradient colors={['#EC407A', '#FF6FAD']} style={styles.header}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-              <Icon name="back" color="#fff" size={20} />
-            </TouchableOpacity>
-            <View style={styles.headerCenter}>
-              <View style={styles.iconCircle}>
-                <Icon name="baby" color="#fff" size={32} />
-              </View>
-              <Text style={styles.title}>Criar Conta</Text>
-              <Text style={styles.subtitle}>Preencha os dados abaixo</Text>
-            </View>
-          </LinearGradient>
-
-          <View style={styles.body}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.card}>
+            <Text style={styles.title} accessibilityRole="header">Criar conta</Text>
+            <Text style={styles.subtitle}>Preencha os campos abaixo para se cadastrar</Text>
 
             {/* Erro backend */}
             {!!authError && (
-              <View style={styles.errorBox}>
+              <View style={styles.errorBox} accessibilityRole="alert">
                 <Text style={styles.errorBoxText}>{authError}</Text>
               </View>
             )}
 
-            {/* Nome */}
-            <Text style={styles.label}>SEU NOME</Text>
-            <TextInput
-              style={[styles.input, nomeErr ? styles.inputErr : null]}
-              placeholder="Como você se chama?"
-              placeholderTextColor="#C9A8B5"
+            <Field
+              label="Nome completo" icon="user" error={nomeErr}
+              placeholder="Seu nome completo"
               value={nome}
               onChangeText={v => { setNome(v); setNomeErr('') }}
               autoCapitalize="words"
+              autoComplete="name"
+              returnKeyType="next"
+              onSubmitEditing={() => emailRef.current?.focus()}
             />
-            {!!nomeErr && <Text style={styles.errText}>{nomeErr}</Text>}
 
-            {/* E-mail */}
-            <Text style={styles.label}>E-MAIL</Text>
-            <TextInput
-              style={[styles.input, emailErr ? styles.inputErr : null]}
+            <Field
+              ref={emailRef} style={styles.fieldGap}
+              label="E-mail" icon="mail" error={emailErr}
               placeholder="seu@email.com"
-              placeholderTextColor="#C9A8B5"
               value={email}
               onChangeText={v => { setEmail(v); setEmailErr('') }}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              returnKeyType="next"
+              onSubmitEditing={() => telRef.current?.focus()}
             />
-            {!!emailErr && <Text style={styles.errText}>{emailErr}</Text>}
 
-            {/* Senha */}
-            <Text style={styles.label}>SENHA</Text>
-            <View style={styles.passRow}>
-              <TextInput
-                style={[styles.input, { flex: 1 }, passErr ? styles.inputErr : null]}
-                placeholder="Mín. 8 caracteres"
-                placeholderTextColor="#C9A8B5"
-                value={pass}
-                onChangeText={v => { setPass(v); setPassErr(''); setAuthError('') }}
-                secureTextEntry={!showPass}
-              />
-              <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPass(s => !s)}>
-                <Text style={styles.eyeText}>{showPass ? 'ocultar' : 'ver'}</Text>
-              </TouchableOpacity>
-            </View>
+            <Field
+              ref={telRef} style={styles.fieldGap}
+              label="Telefone" icon="phone"
+              placeholder="(00) 00000-0000"
+              value={telefone}
+              onChangeText={v => setTelefone(formatarTelefone(v))}
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              maxLength={15}
+              returnKeyType="next"
+              onSubmitEditing={() => passRef.current?.focus()}
+            />
 
-            {/* Barra de força da senha */}
-            {pass.length > 0 && (
-              <View style={{ marginBottom: 4 }}>
-                <View style={styles.strengthRow}>
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <View
-                      key={i}
-                      style={[styles.strengthBar, { backgroundColor: i <= strength ? STRENGTH_COLOR[strength] : '#F5DAE4' }]}
-                    />
-                  ))}
-                </View>
-                <Text style={[styles.strengthLabel, { color: STRENGTH_COLOR[strength] }]}>
-                  {STRENGTH_LABEL[strength]}
-                </Text>
+            <Field
+              ref={passRef} style={styles.fieldGap}
+              label="Senha" icon="lock" error={passErr} secure
+              placeholder="Crie uma senha"
+              onFocusChange={setPassFocused}
+              value={pass}
+              onChangeText={v => { setPass(v); setPassErr(''); setAuthError('') }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="new-password"
+              returnKeyType="next"
+              onSubmitEditing={() => confRef.current?.focus()}
+            />
+
+            {/* Requisitos da senha */}
+            {showPassRules && (
+              <View style={styles.rules} accessibilityLabel="Requisitos da senha">
+                {PASS_RULES.map((r, i) => (
+                  <View key={r.label} style={styles.ruleRow}>
+                    <View style={[styles.ruleDot, passChecks[i] && styles.ruleDotOk]}>
+                      {passChecks[i] && <Icon name="check" color={colors.white} size={10} />}
+                    </View>
+                    <Text style={[styles.ruleText, passChecks[i] && styles.ruleTextOk]}>{r.label}</Text>
+                  </View>
+                ))}
               </View>
             )}
-            {!!passErr && <Text style={styles.errText}>{passErr}</Text>}
 
-            {/* Confirmar senha */}
-            <Text style={styles.label}>CONFIRMAR SENHA</Text>
-            <View style={styles.passRow}>
-              <TextInput
-                style={[styles.input, { flex: 1 }, confErr ? styles.inputErr : null]}
-                placeholder="Repita a senha"
-                placeholderTextColor="#C9A8B5"
-                value={confirm}
-                onChangeText={v => { setConfirm(v); setConfErr('') }}
-                secureTextEntry={!showConf}
-                onSubmitEditing={handleRegister}
-              />
-              <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowConf(s => !s)}>
-                <Text style={styles.eyeText}>{showConf ? 'ocultar' : 'ver'}</Text>
+            <Field
+              ref={confRef} style={styles.fieldGap}
+              label="Confirmar senha" icon="lock" error={confErr} secure
+              placeholder="Digite sua senha novamente"
+              value={confirm}
+              onChangeText={v => { setConfirm(v); setConfErr('') }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="new-password"
+              returnKeyType="done"
+              onSubmitEditing={handleRegister}
+            />
+
+            {/* Termos */}
+            <View style={styles.terms}>
+              <TouchableOpacity
+                style={[styles.checkbox, aceito && styles.checkboxOn, !!aceitoErr && styles.checkboxErr]}
+                onPress={() => { setAceito(a => !a); setAceitoErr('') }}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 8 }}
+                activeOpacity={0.7}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: aceito }}
+                accessibilityLabel="Aceitar os Termos de Uso e a Política de Privacidade"
+              >
+                {aceito && <Icon name="check" color={colors.white} size={12} />}
               </TouchableOpacity>
+              <Text style={styles.termsText}>
+                Eu concordo com os{' '}
+                <Text style={styles.termsLink} accessibilityRole="link" onPress={() => navigation.navigate('Terms')}>
+                  Termos de Uso
+                </Text>
+                {' '}e a{' '}
+                <Text style={styles.termsLink} accessibilityRole="link" onPress={() => navigation.navigate('Privacy')}>
+                  Política de Privacidade
+                </Text>
+                .
+              </Text>
             </View>
-            {!!confErr && <Text style={styles.errText}>{confErr}</Text>}
+            {!!aceitoErr && <Text style={styles.errText}>{aceitoErr}</Text>}
 
             {/* Botão criar conta */}
             <TouchableOpacity
-              style={[styles.btnPrimary, authLoading && { backgroundColor: '#FFB7CD' }]}
+              style={[styles.btnPrimary, authLoading && { backgroundColor: colors.primarySoft }]}
               onPress={handleRegister}
               disabled={authLoading}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Criar minha conta"
             >
               {authLoading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.btnPrimaryText}>Criar Conta</Text>
+                ? <ActivityIndicator color={colors.white} />
+                : <Text style={styles.btnPrimaryText}>Criar minha conta</Text>
               }
             </TouchableOpacity>
 
-            {/* Voltar para login */}
-            <TouchableOpacity style={styles.btnOutline} onPress={() => navigation.goBack()}>
-              <Text style={styles.btnOutlineText}>Já tenho uma conta</Text>
-            </TouchableOpacity>
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>ou</Text>
+              <View style={styles.dividerLine} />
+            </View>
 
+            {/* Voltar para login */}
+            <View style={styles.loginRow}>
+              <Text style={styles.loginText}>Já tem uma conta? </Text>
+              <TouchableOpacity
+                onPress={goToLogin}
+                hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                accessibilityRole="link"
+              >
+                <Text style={styles.loginLink}>Entrar</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <Text style={styles.footer}>BabyBuddy · Seus dados, sempre seguros</Text>
+          <Copyright />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -213,55 +304,73 @@ async function handleRegister() {
 }
 
 const styles = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: '#fff' },
-  scroll: { flexGrow: 1 },
-  header: {
-    paddingTop: 16, paddingBottom: 36, paddingHorizontal: 20,
-    borderBottomLeftRadius: 32, borderBottomRightRadius: 32,
+  safe:   { flex: 1, backgroundColor: colors.background },
+  scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  card: {
+    width: '100%', maxWidth: 440,
+    backgroundColor: colors.white, borderRadius: 24,
+    paddingHorizontal: 22, paddingVertical: 26,
+    shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
   },
-  backBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 12,
+  title:    { fontSize: 30, color: colors.ink, fontFamily: fonts.bold, textAlign: 'center' },
+  subtitle: {
+    fontSize: 14, lineHeight: 19, color: colors.gray, fontFamily: fonts.medium,
+    textAlign: 'center', marginTop: 4, marginBottom: 20,
   },
-  headerCenter: { alignItems: 'center', gap: 8 },
-  iconCircle: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  title:    { fontSize: 22, color: '#fff', fontWeight: '900', letterSpacing: 0.5 },
-  subtitle: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
-  body:     { flex: 1, padding: 28, gap: 10 },
   errorBox: {
-    backgroundColor: '#fff0f3', borderWidth: 1.5, borderColor: '#FFB7CD',
-    borderRadius: 12, padding: 10,
+    backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.primarySoft,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 16,
   },
-  errorBoxText: { fontSize: 12, color: '#E53935', fontWeight: '700' },
-  label: { fontSize: 10, fontWeight: '900', color: '#A07080', letterSpacing: 1, marginTop: 6 },
+  errorBoxText: { fontSize: 13, color: colors.danger, fontFamily: fonts.semiBold, textAlign: 'center' },
+  label:    { fontSize: 14, color: colors.inkSoft, fontFamily: fonts.semiBold, marginBottom: 6 },
+  fieldGap: { marginTop: 12 },
+  field: {
+    height: 50, flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderWidth: 1, borderColor: colors.line, borderRadius: radius.input,
+    paddingHorizontal: 14, backgroundColor: colors.white,
+  },
+  fieldFocus: { borderColor: colors.primary },
+  fieldErr:   { borderColor: colors.danger },
   input: {
-    backgroundColor: '#FFF5F8', borderWidth: 1.5, borderColor: '#F5DAE4',
-    borderRadius: 50, paddingHorizontal: 18, paddingVertical: 13,
-    fontSize: 13, color: '#2D1220', fontWeight: '600',
+    flex: 1, minWidth: 0, height: '100%', padding: 0,
+    fontSize: 15, color: colors.inkSoft, fontFamily: fonts.regular,
+    ...Platform.select({ web: { outlineStyle: 'none' } }),
   },
-  inputErr:    { borderColor: '#E53935', backgroundColor: '#fff5f5' },
-  errText:     { fontSize: 11, color: '#E53935', fontWeight: '700', paddingLeft: 6 },
-  passRow:     { flexDirection: 'row', alignItems: 'center' },
-  eyeBtn:      { position: 'absolute', right: 16 },
-  eyeText:     { fontSize: 11, fontWeight: '800', color: '#C9A8B5' },
-  strengthRow: { flexDirection: 'row', gap: 4, marginBottom: 3 },
-  strengthBar: { flex: 1, height: 3, borderRadius: 2 },
-  strengthLabel: { fontSize: 10, fontWeight: '800' },
+  errText: { fontSize: 12, color: colors.danger, fontFamily: fonts.semiBold, marginTop: 5, paddingLeft: 2 },
+  rules: {
+    marginTop: 6, gap: 8,
+    borderWidth: 1, borderColor: colors.line, borderRadius: radius.input,
+    paddingHorizontal: 14, paddingVertical: 12, backgroundColor: colors.white,
+  },
+  ruleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  ruleDot: {
+    width: 16, height: 16, borderRadius: 8,
+    borderWidth: 1.5, borderColor: colors.grayLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  ruleDotOk:  { backgroundColor: colors.success, borderColor: colors.success },
+  ruleText:   { flex: 1, fontSize: 13, color: colors.gray, fontFamily: fonts.medium },
+  ruleTextOk: { color: colors.inkSoft },
+  terms: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 16 },
+  checkbox: {
+    width: 18, height: 18, borderRadius: 5, marginTop: 1,
+    borderWidth: 1.5, borderColor: colors.grayLight, backgroundColor: colors.white,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  checkboxOn:  { backgroundColor: colors.primary, borderColor: colors.primary },
+  checkboxErr: { borderColor: colors.danger },
+  termsText: { flex: 1, fontSize: 13, lineHeight: 19, color: colors.gray, fontFamily: fonts.medium },
+  termsLink: { color: colors.primary, fontFamily: fonts.semiBold },
   btnPrimary: {
-    backgroundColor: '#EC407A', borderRadius: 50,
-    paddingVertical: 14, alignItems: 'center', marginTop: 10,
+    height: 52, borderRadius: 50, backgroundColor: colors.primary,
+    alignItems: 'center', justifyContent: 'center', marginTop: 20,
   },
-  btnPrimaryText: { color: '#fff', fontSize: 14, fontWeight: '900', letterSpacing: 0.5 },
-  btnOutline: {
-    borderRadius: 50, borderWidth: 1.5, borderColor: '#F5DAE4',
-    paddingVertical: 13, alignItems: 'center',
-  },
-  btnOutlineText: { color: '#EC407A', fontSize: 13, fontWeight: '800' },
-  footer: { textAlign: 'center', fontSize: 12, color: '#C9A8B5', fontWeight: '700', padding: 20 },
+  btnPrimaryText: { color: colors.white, fontSize: 17, fontFamily: fonts.bold },
+  divider:     { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18, marginBottom: 14 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.line },
+  dividerText: { fontSize: 13, color: colors.gray, fontFamily: fonts.medium },
+  loginRow:  { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' },
+  loginText: { fontSize: 14, color: colors.gray, fontFamily: fonts.medium },
+  loginLink: { fontSize: 14, color: colors.primary, fontFamily: fonts.bold },
 })

@@ -3,28 +3,25 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useApp } from '../context/AppContext'
 import { Icon } from '../components/Icon'
+import { Copyright } from '../components/Copyright'
+import { SelectField } from '../components/SelectField'
+import { colors, fonts, radius } from '../theme'
 import { obterGestanteDoUsuario, registrarOuAtualizarGestante } from '../application/gestante'
 
-const FIELDS = [
-  { key: 'name',      label: 'SEU NOME',             placeholder: 'Como você se chama?',    keyboard: 'default' },
-  { key: 'birthDate', label: 'DATA DE NASCIMENTO (AAAA-MM-DD)', placeholder: 'Ex: 1998-01-10', keyboard: 'numbers-and-punctuation' },
-  { key: 'weeks',     label: 'SEMANAS DE GESTAÇÃO',   placeholder: 'Ex: 24',                 keyboard: 'numeric' },
-  { key: 'due',       label: 'DATA PREVISTA (AAAA-MM-DD)', placeholder: 'Ex: 2026-10-15',    keyboard: 'numbers-and-punctuation' },
-  { key: 'doctor',    label: 'MÉDICO/A',              placeholder: 'Nome do/a médico/a',      keyboard: 'default' },
-  { key: 'hospital',  label: 'HOSPITAL / MATERNIDADE', placeholder: 'Nome do local',          keyboard: 'default' },
-  { key: 'weight',    label: 'PESO (kg)',              placeholder: 'Ex: 65',                  keyboard: 'numeric' },
-  { key: 'height',    label: 'ALTURA (cm)',            placeholder: 'Ex: 165',                 keyboard: 'numeric' },
-  { key: 'blood',     label: 'TIPO SANGUÍNEO',        placeholder: 'Ex: A+',                  keyboard: 'default' },
-  { key: 'allergies', label: 'ALERGIAS',               placeholder: 'Ex: Dipirona',            keyboard: 'default' },
-]
+const range = (from, to, unit) =>
+  Array.from({ length: to - from + 1 }, (_, i) => ({ value: String(from + i), label: `${from + i} ${unit}` }))
+
+const WEIGHTS = range(1, 150, 'kg')
+const HEIGHTS = range(100, 220, 'cm')
+const WEEKS = Array.from({ length: 42 }, (_, i) => ({ value: String(i + 1), label: i === 0 ? '1 semana' : (i + 1) + ' semanas' }))
+const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(t => ({ value: t, label: t }))
 
 export default function PersonalDataScreen({ navigation }) {
   const { currentUser, profile, setProfile } = useApp()
-  const [form, setForm] = useState({ ...profile })
+  const [form, setForm] = useState({ ...profile, name: profile.name || currentUser?.nome || '' })
   const [saved, setSaved] = useState(false)
   const [gestanteId, setGestanteId] = useState(null)
 
@@ -60,40 +57,58 @@ export default function PersonalDataScreen({ navigation }) {
     setTimeout(() => navigation.goBack(), 600)
   }
 
+  const set = key => value => setForm(p => ({ ...p, [key]: value }))
+
+  function field(key, label, placeholder, keyboard = 'default') {
+    return (
+      <View>
+        <Text style={styles.label}>{label}</Text>
+        <TextInput
+          style={styles.input}
+          placeholder={placeholder}
+          placeholderTextColor={colors.blackSoft}
+          value={form[key] || ''}
+          onChangeText={set(key)}
+          keyboardType={keyboard}
+          autoCapitalize={keyboard === 'default' ? 'words' : 'none'}
+          accessibilityLabel={label}
+        />
+      </View>
+    )
+  }
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F0F5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.grayBg }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <LinearGradient colors={['#EC407A', '#C0255B']} style={styles.header}>
+        <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Icon name="back" color="#fff" size={20} />
+            <Icon name="back" color={colors.black} size={26} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Dados Pessoais</Text>
           <View style={{ width: 36 }} />
-        </LinearGradient>
+        </View>
 
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-          {FIELDS.map(f => (
-            <View key={f.key}>
-              <Text style={styles.label}>{f.label}</Text>
-              <TextInput
-                style={styles.input}
-                placeholder={f.placeholder}
-                placeholderTextColor="#C9A8B5"
-                value={form[f.key] || ''}
-                onChangeText={v => setForm(p => ({ ...p, [f.key]: v }))}
-                keyboardType={f.keyboard}
-                autoCapitalize={f.keyboard === 'default' ? 'words' : 'none'}
-              />
-            </View>
-          ))}
+          {field('name', 'Nome completo', 'Seu nome completo')}
+          {field('birthDate', 'Data de nascimento', 'AAAA-MM-DD', 'numbers-and-punctuation')}
+          <SelectField label="Peso" placeholder="Selecione seu peso" options={WEIGHTS} startAt="60" value={form.weight} onChange={set('weight')} />
+          <SelectField label="Altura" placeholder="Selecione sua altura" options={HEIGHTS} startAt="160" value={form.height} onChange={set('height')} />
+          <SelectField label="Tipo sanguíneo" placeholder="Selecione seu tipo sanguíneo" options={BLOOD_TYPES} value={form.blood} onChange={set('blood')} />
+          <SelectField label="Semanas de gestação" placeholder="Selecione a semana" options={WEEKS} value={form.weeks} onChange={set('weeks')} />
+          {field('due', 'Data prevista para o parto', 'AAAA-MM-DD', 'numbers-and-punctuation')}
+          {field('hospital', 'Hospital / Maternidade', 'Nome do local')}
+          {field('doctor', 'Médico(a)', 'Nome do(a) médico(a)')}
+          {field('allergies', 'Alergias', 'Ex: Dipirona')}
 
           <TouchableOpacity
-            style={[styles.saveBtn, saved && { backgroundColor: '#27AE60' }]}
+            style={[styles.saveBtn, saved && { backgroundColor: colors.success }]}
             onPress={handleSave}
+            activeOpacity={0.85}
           >
-            <Icon name={saved ? 'check' : 'ok'} color="#fff" size={18} />
+            <Icon name={saved ? 'check' : 'ok'} color={colors.white} size={18} />
             <Text style={styles.saveBtnText}>{saved ? 'Salvo!' : 'Salvar Dados'}</Text>
           </TouchableOpacity>
+          <Copyright />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -103,24 +118,25 @@ export default function PersonalDataScreen({ navigation }) {
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 16,
+    paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.grayBg,
   },
   backBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: { fontSize: 18, fontWeight: '900', color: '#fff' },
-  body: { padding: 20, gap: 8, paddingBottom: 40 },
-  label: { fontSize: 10, fontWeight: '900', color: '#A07080', letterSpacing: 1, marginTop: 10, marginBottom: 4 },
+  headerTitle: { fontSize: 18, fontFamily: fonts.extraBold, color: colors.black },
+  body: { padding: 20, gap: 14, paddingBottom: 40 },
+  label: { fontSize: 14, fontFamily: fonts.semiBold, color: colors.black, marginBottom: 3 },
   input: {
-    backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#F5DAE4',
-    borderRadius: 50, paddingHorizontal: 18, paddingVertical: 13,
-    fontSize: 13, color: '#2D1220', fontWeight: '600',
+    height: 44, backgroundColor: colors.white,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1,
+    borderRadius: radius.input, paddingHorizontal: 14, paddingVertical: 0,
+    fontSize: 15, color: colors.black, fontFamily: fonts.regular,
   },
   saveBtn: {
-    backgroundColor: '#EC407A', borderRadius: 50,
-    paddingVertical: 15, flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 24,
+    backgroundColor: colors.primary, borderRadius: 25,
+    paddingVertical: 11, flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10,
   },
-  saveBtnText: { color: '#fff', fontWeight: '900', fontSize: 15 },
+  saveBtnText: { color: colors.white, fontFamily: fonts.extraBold, fontSize: 15 },
 })

@@ -2,8 +2,10 @@ import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { useApp } from '../context/AppContext'
-import { View, ActivityIndicator } from 'react-native'
+import { View } from 'react-native'
 import { Icon } from '../components/Icon'
+import { Loader } from '../components/Loader'
+import { colors, fonts } from '../theme'
 
 import LoginScreen from '../screens/LoginScreen'
 import RegisterScreen from '../screens/RegisterScreen'
@@ -31,17 +33,17 @@ function TabNavigator() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: '#EC407A',
-        tabBarInactiveTintColor: '#C9A8B5',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.placeholder,
         tabBarStyle: {
-          backgroundColor: '#fff',
-          borderTopColor: '#F5DAE4',
+          backgroundColor: colors.white,
+          borderTopColor: colors.border,
           borderTopWidth: 1,
           paddingBottom: 6,
           paddingTop: 6,
           height: 60,
         },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
+        tabBarLabelStyle: { fontSize: 10, fontFamily: fonts.bold },
         tabBarIcon: ({ color, size }) => {
           const iconMap = { Home: 'home', Calendario: 'cal', Lembretes: 'bell', Perfil: 'user' }
           return <Icon name={iconMap[route.name]} color={color} size={size - 2} />
@@ -61,8 +63,8 @@ function AppNavigator() {
 
   if (authLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF5F8' }}>
-        <ActivityIndicator size="large" color="#EC407A" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <Loader />
       </View>
     )
   }
@@ -74,6 +76,8 @@ function AppNavigator() {
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="Privacy" component={PrivacyScreen} options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="Terms" component={TermsScreen} options={{ animation: 'slide_from_right' }} />
           </>
         ) : (
           <>
@@ -84,7 +88,7 @@ function AppNavigator() {
             <Stack.Screen name="PersonalData" component={PersonalDataScreen} options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: 'slide_from_right' }} />
-            <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} options={{ presentation: 'transparentModal', animation: 'none' }} />
             <Stack.Screen name="Privacy" component={PrivacyScreen} options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="Terms" component={TermsScreen} options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="Materials" component={MaterialsScreen} options={{ animation: 'slide_from_right' }} />

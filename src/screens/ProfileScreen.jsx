@@ -1,17 +1,19 @@
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
+import { useState } from 'react'
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useApp } from '../context/AppContext'
 import { Icon } from '../components/Icon'
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { colors, fonts } from '../theme'
 
-function MenuItem({ icon, label, onPress, danger }) {
+function MenuItem({ icon, label, onPress }) {
   return (
-    <TouchableOpacity style={[styles.menuItem, danger && styles.menuItemDanger]} onPress={onPress}>
-      <View style={[styles.menuIcon, danger && styles.menuIconDanger]}>
-        <Icon name={icon} color={danger ? '#E53935' : '#EC407A'} size={18} />
+    <TouchableOpacity style={styles.menuItem} onPress={onPress} disabled={!onPress}>
+      <View style={styles.menuIcon}>
+        <Icon name={icon} color={colors.black} size={18} />
       </View>
-      <Text style={[styles.menuLabel, danger && styles.menuLabelDanger]}>{label}</Text>
-      <Icon name="fwd" color={danger ? '#E53935' : '#C9A8B5'} size={16} />
+      <Text style={styles.menuLabel}>{label}</Text>
+      {!!onPress && <Icon name="fwd" color={colors.grayLight} size={16} />}
     </TouchableOpacity>
   )
 }
@@ -19,27 +21,24 @@ function MenuItem({ icon, label, onPress, danger }) {
 export default function ProfileScreen({ navigation }) {
   const { currentUser, logout } = useApp()
 
-  function handleLogout() {
-    if (Platform.OS === 'web') {
-      if (globalThis.confirm('Tem certeza que deseja sair?')) logout()
-      return
-    }
+  const [confirmingLogout, setConfirmingLogout] = useState(false)
 
-    Alert.alert('Sair', 'Tem certeza que deseja sair?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Sair', style: 'destructive', onPress: logout },
-    ])
+  function confirmLogout() {
+    setConfirmingLogout(false)
+    logout()
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F0F5' }}>
-      <LinearGradient colors={['#EC407A', '#C0255B']} style={styles.header}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={styles.header}>
         <View style={styles.avatarWrap}>
-          <Icon name="user" color="#fff" size={38} />
+          <Icon name="user" color={colors.primary} size={32} />
         </View>
-        <Text style={styles.userName}>{currentUser?.nome || 'Usuária'}</Text>
-        <Text style={styles.userEmail}>{currentUser?.email || ''}</Text>
-      </LinearGradient>
+        <View style={styles.userInfo}>
+          <Text style={styles.userName} numberOfLines={2}>{currentUser?.nome || 'Usuária'}</Text>
+          {!!currentUser?.email && <Text style={styles.userEmail} numberOfLines={1}>{currentUser.email}</Text>}
+        </View>
+      </View>
 
       <ScrollView contentContainerStyle={styles.body}>
         <Text style={styles.section}>MINHA CONTA</Text>
@@ -49,39 +48,51 @@ export default function ProfileScreen({ navigation }) {
         <Text style={styles.section}>INFORMAÇÕES</Text>
         <MenuItem icon="file"   label="Política de Privacidade" onPress={() => navigation.navigate('Privacy')} />
         <MenuItem icon="check"  label="Termos de Uso"           onPress={() => navigation.navigate('Terms')} />
+        <MenuItem icon="globe"  label="Português - Brasil" />
 
         <Text style={styles.section}>SESSÃO</Text>
-        <MenuItem icon="logout" label="Sair"               onPress={handleLogout} />
-        <MenuItem icon="trash"  label="Excluir Conta"      onPress={() => navigation.navigate('DeleteAccount')} danger />
+        <MenuItem icon="logout" label="Sair"               onPress={() => setConfirmingLogout(true)} />
+        <MenuItem icon="trash"  label="Excluir Conta"      onPress={() => navigation.navigate('DeleteAccount')} />
       </ScrollView>
+
+      <ConfirmDialog
+        visible={confirmingLogout}
+        icon="logout"
+        title="Deseja sair?"
+        message={'Você precisará entrar novamente\npara acessar sua conta.'}
+        confirmLabel="Sair da conta"
+        onConfirm={confirmLogout}
+        onCancel={() => setConfirmingLogout(false)}
+      />
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  header: { alignItems: 'center', paddingVertical: 32, gap: 6 },
+  header: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 24, marginHorizontal: 16, marginTop: 16, borderRadius: 18,
+    // fundo transparente: só a borda fina no rosa do projeto delimita o card
+    backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(218,29,107,0.18)',
+  },
   avatarWrap: {
-    width: 84, height: 84, borderRadius: 42,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.35)',
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: 'rgba(218,29,107,0.10)',
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: 8,
   },
-  userName:  { fontSize: 18, fontWeight: '900', color: '#fff' },
-  userEmail: { fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
-  body: { padding: 16, paddingBottom: 30 },
-  section: { fontSize: 10, fontWeight: '900', color: '#A07080', letterSpacing: 1, marginTop: 16, marginBottom: 8, paddingLeft: 4 },
+  userInfo:  { flexShrink: 1, gap: 2 },
+  userName:  { fontSize: 18, fontFamily: fonts.extraBold, color: colors.black },
+  userEmail: { fontSize: 11, fontFamily: fonts.medium, color: colors.blackSoft, textDecorationLine: 'underline' },
+  body: { padding: 16, paddingTop: 20, paddingBottom: 30 },
+  section: { fontSize: 10, fontFamily: fonts.extraBold, color: colors.gray, letterSpacing: 1, marginTop: 24, marginBottom: 8, paddingLeft: 4 },
   menuItem: {
-    backgroundColor: '#fff', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 14,
+    backgroundColor: colors.white, borderRadius: 18, paddingHorizontal: 16, paddingVertical: 9,
     flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8,
-    shadowColor: '#EC407A', shadowOpacity: 0.07, shadowRadius: 6, elevation: 2,
+    shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 6, elevation: 2,
   },
-  menuItemDanger: { backgroundColor: '#fff5f5' },
   menuIcon: {
-    width: 38, height: 38, borderRadius: 14,
-    backgroundColor: '#FFF5F8', alignItems: 'center', justifyContent: 'center',
+    width: 34, height: 34, borderRadius: 12,
+    backgroundColor: colors.line, alignItems: 'center', justifyContent: 'center',
   },
-  menuIconDanger: { backgroundColor: '#fff0f3' },
-  menuLabel: { flex: 1, fontSize: 13, fontWeight: '800', color: '#2D1220' },
-  menuLabelDanger: { color: '#E53935' },
+  menuLabel: { flex: 1, fontSize: 13, fontFamily: fonts.bold, color: colors.black },
 })
