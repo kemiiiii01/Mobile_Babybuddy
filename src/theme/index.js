@@ -3,6 +3,7 @@ export const colors = {
   primaryDark:   '#B01556',
   primaryLight:  '#E85A96',
   primarySoft:   '#F3B4D0',
+  primaryPale:   '#FFEEF5',
 
   background:    '#FFFFFF',
   white:         '#FFFFFF',
@@ -27,6 +28,7 @@ export const colors = {
   danger:        '#E53935',
   dangerSoft:    '#FFF0F3',
   success:       '#27AE60',
+  successSoft:   '#E6F6EC',
 }
 
 // League Spartan: cada peso é uma família própria, então não use fontWeight junto.
@@ -36,6 +38,11 @@ export const fonts = {
   semiBold:  'LeagueSpartan_600SemiBold',
   bold:      'LeagueSpartan_700Bold',
   extraBold: 'LeagueSpartan_800ExtraBold',
+}
+
+// Em telas largas (tablets), o conteúdo fica numa coluna central com esta largura máxima.
+export const layout = {
+  maxWidth: 560,
 }
 
 export const radius = {

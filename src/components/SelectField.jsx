@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { FlatList, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Icon } from './Icon'
-import { colors, fonts, radius } from '../theme'
+import { colors, fonts, layout, radius } from '../theme'
 
 const ROW_HEIGHT = 48
 
@@ -85,9 +85,10 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1,
   },
   value:       { flex: 1, fontSize: 15, color: colors.black, fontFamily: fonts.regular },
-  placeholder: { color: colors.blackSoft },
+  placeholder: { color: colors.gray },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   sheet: {
+    width: '100%', maxWidth: layout.maxWidth, alignSelf: 'center',
     maxHeight: '55%', backgroundColor: colors.white,
     borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 16,
   },

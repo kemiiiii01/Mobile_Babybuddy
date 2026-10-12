@@ -123,7 +123,7 @@ export default function ChangePasswordScreen({ navigation }) {
               : <Text style={styles.saveBtnText}>{success ? 'Senha alterada!' : 'Salvar senha'}</Text>
             }
           </TouchableOpacity>
-          <Copyright style={styles.copyright} />
+          <Copyright />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -141,7 +141,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 18, fontFamily: fonts.extraBold, color: colors.black },
   body: { flexGrow: 1, padding: 20, paddingTop: 60, paddingBottom: 20 },
-  copyright: { marginTop: 'auto', paddingTop: 24 },
   errorBox: {
     backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.primarySoft,
     borderRadius: radius.input, padding: 12, marginBottom: 16,

@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useApp } from '../context/AppContext'
 import { Icon } from '../components/Icon'
-import { colors, fonts } from '../theme'
+import { colors, fonts, layout } from '../theme'
 
 export default function DeleteAccountScreen({ navigation }) {
   const { deleteCurrentAccount } = useApp()
@@ -107,7 +107,7 @@ export default function DeleteAccountScreen({ navigation }) {
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 12 },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  body: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center', gap: 16 },
+  body: { flex: 1, width: '100%', maxWidth: layout.maxWidth, alignSelf: 'center', padding: 24, alignItems: 'center', justifyContent: 'center', gap: 16 },
   illustration: { width: 120, height: 120, borderRadius: 60, overflow: 'hidden' },
   illustrationImg: { width: 148, height: 148, marginLeft: -14, marginTop: -15 },
   title: { fontSize: 22, fontFamily: fonts.extraBold, color: colors.black },

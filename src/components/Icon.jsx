@@ -2,13 +2,13 @@ import Svg, {
   Polyline, Path, Circle, Rect, Line,
 } from 'react-native-svg'
 
-export function Icon({ name, color = 'currentColor', size = 18 }) {
+export function Icon({ name, color = 'currentColor', size = 18, strokeWidth = 2.2 }) {
   const props = {
     width: size, height: size,
     viewBox: '0 0 24 24',
     fill: 'none',
     stroke: color,
-    strokeWidth: 2.2,
+    strokeWidth,
     strokeLinecap: 'round',
     strokeLinejoin: 'round',
   }
@@ -39,6 +39,10 @@ export function Icon({ name, color = 'currentColor', size = 18 }) {
     eye:    <><Path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><Circle cx="12" cy="12" r="3" /></>,
     eyeOff: <><Path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><Path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><Path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" /><Line x1="1" y1="1" x2="23" y2="23" /></>,
     globe:  <><Circle cx="12" cy="12" r="10" /><Line x1="2" y1="12" x2="22" y2="12" /><Path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></>,
+    pill:     <><Path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" /><Path d="m8.5 8.5 7 7" /></>,
+    steth:    <><Path d="M11 2v2" /><Path d="M5 2v2" /><Path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1" /><Path d="M8 15a6 6 0 0 0 12 0v-3" /><Circle cx="20" cy="10" r="2" /></>,
+    exam:     <><Rect x="8" y="2" width="8" height="4" rx="1" /><Path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><Path d="M9 14h6" /><Path d="M12 17v-6" /></>,
+    prenatal: <><Path d="M9 12h.01" /><Path d="M15 12h.01" /><Path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5" /><Path d="M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1" /></>,
     x:      <><Line x1="18" y1="6" x2="6" y2="18" /><Line x1="6" y1="6" x2="18" y2="18" /></>,
   }
 

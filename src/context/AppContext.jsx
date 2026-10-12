@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import SecureStorage from '../infrastructure/storage/SecureStorage'
 import { clearCredentials } from '../infrastructure/http/credentialsStore'
@@ -10,7 +10,8 @@ import {
   trocarSenha as trocarSenhaUseCase,
   excluirConta as excluirContaUseCase,
 } from '../application/auth'
-import { registrarCompromisso, removerCompromisso } from '../application/agenda'
+import { registrarCompromisso, removerCompromisso, listarCompromissos } from '../application/agenda'
+import mesclarCompromissosRemotos from './mesclarCompromissosRemotos'
 
 const AppContext = createContext(null)
 
@@ -27,6 +28,12 @@ export function AppProvider({ children }) {
   const [remFilter, setRemFilter] = useState('Todos')
   const [calMonth, setCalMonth] = useState(new Date().getMonth())
   const [calYear, setCalYear] = useState(new Date().getFullYear())
+
+  // Sempre apontam para as listas mais recentes; usados por tarefas em segundo plano.
+  const remindersRef = useRef(reminders)
+  const eventsRef = useRef(events)
+  remindersRef.current = reminders
+  eventsRef.current = events
 
   // Restaura sessão salva ao abrir o app
   useEffect(() => {
@@ -69,6 +76,29 @@ export function AppProvider({ children }) {
       ;(data.reminders || []).filter(r => !r.remoteId).forEach(r => syncLembreteComBackend(usuario.id, r))
       ;(data.events || []).filter(e => !e.remoteId).forEach(e => syncEventoComBackend(usuario.id, e))
     } catch (_) {}
+    importarCompromissosDoServidor(usuario)
+  }
+
+  // Traz para o aparelho os compromissos da conta que só existem no servidor
+  // (cadastrados em outro aparelho, ou antes de reinstalar o app). Roda em segundo
+  // plano: sem rede, o app segue só com o que já está guardado no aparelho.
+  function importarCompromissosDoServidor(usuario) {
+    Promise.resolve(listarCompromissos(usuario.id))
+      .then(remotos => {
+        if (!Array.isArray(remotos)) return
+        const novos = mesclarCompromissosRemotos(remotos, remindersRef.current, eventsRef.current)
+        if (novos.reminders.length) {
+          const next = [...remindersRef.current, ...novos.reminders]
+          setReminders(next)
+          AsyncStorage.setItem(`${usuario.email}_reminders`, JSON.stringify(next)).catch(() => {})
+        }
+        if (novos.events.length) {
+          const next = [...eventsRef.current, ...novos.events]
+          setEvents(next)
+          AsyncStorage.setItem(`${usuario.email}_events`, JSON.stringify(next)).catch(() => {})
+        }
+      })
+      .catch(() => {})
   }
 
   async function saveItem(key, value) {

@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   headerTitle: { fontSize: 18, fontFamily: fonts.extraBold, color: colors.black },
-  body: { padding: 20, paddingBottom: 40, gap: 6 },
+  body: { flexGrow: 1, padding: 20, paddingBottom: 20, gap: 6 },
   heading:    { fontSize: 16, lineHeight: 22, fontFamily: fonts.bold, color: colors.black, textAlign: 'left' },
   headingGap: { marginTop: 12 },
   text:   { fontSize: 14, lineHeight: 21, fontFamily: fonts.regular, color: colors.black, textAlign: 'left' },

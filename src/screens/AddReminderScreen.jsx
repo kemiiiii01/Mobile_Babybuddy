@@ -1,151 +1,284 @@
 import { useState } from 'react'
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
+  View, Text, TextInput, TouchableOpacity, ScrollView, Switch,
   StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useApp } from '../context/AppContext'
 import { Icon } from '../components/Icon'
-import { Copyright } from '../components/Copyright'
+import { DateField, TimeField } from '../components/DateTimeFields'
 import { colors, fonts, radius } from '../theme'
+import { REMINDER_CATEGORIES, REMINDER_COLORS, REMINDER_FREQUENCIES, reminderColor } from '../constants/reminders'
 
-const CATS = ['Medicamento', 'Consulta', 'Exame', 'Outro']
-const COLORS = [colors.primary, colors.primaryLight, '#FF8C00', colors.success, '#1565C0', '#7B1FA2']
+const TITLE_MAX = 25
+// O servidor guarda a descrição em um campo de 200 caracteres.
+const NOTES_MAX = 180
 
-export default function AddReminderScreen({ navigation }) {
-  const { addReminder } = useApp()
-  const [title, setTitle] = useState('')
-  const [time, setTime]   = useState('')
-  const [date, setDate]   = useState('')
-  const [cat, setCat]     = useState('Consulta')
-  const [color, setColor] = useState(colors.primary)
-  const [titleErr, setTitleErr] = useState('')
+export default function AddReminderScreen({ navigation, route }) {
+  const { reminders, addReminder, deleteReminder } = useApp()
+  const editing = reminders.find(r => r.id === route?.params?.reminderId) || null
+
+  const [title, setTitle]   = useState(editing?.title || '')
+  const [cat, setCat]       = useState(editing?.cat || '')
+  const [date, setDate]     = useState(editing?.date || '')
+  const [time, setTime]     = useState(editing?.time || '')
+  const [freq, setFreq]     = useState(editing?.freq || 'Uma vez')
+  const [notes, setNotes]   = useState(editing?.notes || '')
+  const [notify, setNotify] = useState(editing?.notify || false)
+  const [color, setColor]   = useState(reminderColor(editing?.color))
+  const [errors, setErrors] = useState({})
+
+  const showFreq = cat === 'Medicamento'
+
+  function clearError(key) {
+    setErrors(e => (e[key] ? { ...e, [key]: '' } : e))
+  }
+
+  function validate() {
+    const next = {}
+    if (!title.trim()) next.title = 'Digite um título.'
+    if (!cat) next.cat = 'Selecione uma categoria.'
+    if (!date) next.date = 'Selecione a data.'
+    setErrors(next)
+    return Object.keys(next).length === 0
+  }
 
   function handleSave() {
-    if (!title.trim()) { setTitleErr('Título obrigatório'); return }
-    addReminder({
-      id: Date.now().toString(),
+    if (!validate()) return
+    const reminder = {
+      id: editing?.id || Date.now().toString(),
       title: title.trim(),
-      time: time.trim(),
-      date: date.trim(),
-      cat,
-      color,
-      done: false,
-    })
+      cat, date, time, notify, color,
+      // a frequência só existe para medicamentos
+      freq: showFreq ? freq : 'Uma vez',
+      notes: notes.trim(),
+      done: editing?.done || false,
+    }
+    // O contexto só sabe criar e remover: a edição troca o registro antigo pelo novo,
+    // e com isso o compromisso no servidor também é recriado.
+    if (editing) deleteReminder(editing.id)
+    addReminder(reminder)
     navigation.goBack()
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <LinearGradient colors={[colors.primary, colors.primaryDark]} style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Icon name="back" color={colors.white} size={20} />
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} accessibilityLabel="Voltar">
+            <Icon name="back" color={colors.black} size={26} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Novo Lembrete</Text>
-          <View style={{ width: 36 }} />
-        </LinearGradient>
+          <Text style={styles.headerTitle}>{editing ? 'Editar lembrete' : 'Novo lembrete'}</Text>
+          <View style={styles.headerBtn} />
+        </View>
 
-        <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-          <Text style={styles.label}>TÍTULO *</Text>
+        <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <Text style={styles.label}>Título do lembrete</Text>
           <TextInput
-            style={[styles.input, titleErr ? styles.inputErr : null]}
-            placeholder="Ex: Tomar vitamina"
-            placeholderTextColor={colors.placeholder}
+            style={[styles.input, !!errors.title && styles.inputErr]}
+            placeholder="Ex.: Tomar o suplemento"
+            placeholderTextColor={colors.grayLight}
             value={title}
-            onChangeText={v => { setTitle(v); setTitleErr('') }}
+            onChangeText={v => { setTitle(v); clearError('title') }}
+            maxLength={TITLE_MAX}
+            accessibilityLabel="Título do lembrete"
           />
-          {!!titleErr && <Text style={styles.errText}>{titleErr}</Text>}
+          {!!errors.title && <Text style={styles.errText}>{errors.title}</Text>}
 
-          <Text style={styles.label}>HORÁRIO</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ex: 08:00"
-            placeholderTextColor={colors.placeholder}
-            value={time}
-            onChangeText={setTime}
-            keyboardType="numbers-and-punctuation"
-          />
-
-          <Text style={styles.label}>DATA (AAAA-MM-DD)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ex: 2026-06-15"
-            placeholderTextColor={colors.placeholder}
-            value={date}
-            onChangeText={setDate}
-            keyboardType="numbers-and-punctuation"
-          />
-
-          <Text style={styles.label}>CATEGORIA</Text>
-          <View style={styles.chipsRow}>
-            {CATS.map(c => (
-              <TouchableOpacity
-                key={c}
-                style={[styles.chip, cat === c && styles.chipActive]}
-                onPress={() => setCat(c)}
-              >
-                <Text style={[styles.chipText, cat === c && { color: colors.white }]}>{c}</Text>
-              </TouchableOpacity>
-            ))}
+          <Text style={[styles.label, styles.gap]}>Categoria</Text>
+          <View style={styles.cats}>
+            {REMINDER_CATEGORIES.map(c => {
+              const active = cat === c.value
+              return (
+                <TouchableOpacity
+                  key={c.value}
+                  style={[styles.cat, active && styles.catActive]}
+                  onPress={() => { setCat(c.value); clearError('cat') }}
+                  activeOpacity={0.7}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={c.label}
+                >
+                  <View style={styles.catIcon}>
+                    <Icon name={c.icon} color={colors.primary} size={15} />
+                  </View>
+                  <Text style={styles.catText} numberOfLines={1}>{c.label}</Text>
+                  <View style={[styles.radio, active && styles.radioActive]}>
+                    {active && <View style={styles.radioDot} />}
+                  </View>
+                </TouchableOpacity>
+              )
+            })}
           </View>
 
-          <Text style={styles.label}>COR</Text>
-          <View style={styles.colorsRow}>
-            {COLORS.map(c => (
-              <TouchableOpacity
-                key={c}
-                style={[styles.colorDot, { backgroundColor: c }, color === c && styles.colorDotSel]}
-                onPress={() => setColor(c)}
-              />
-            ))}
+          {!!errors.cat && <Text style={styles.errText}>{errors.cat}</Text>}
+
+          <View style={[styles.row, styles.gap]}>
+            <DateField label="Data" value={date} error={!!errors.date} disablePast onChange={v => { setDate(v); clearError('date') }} />
+            <TimeField label="Horário (opcional)" value={time} onChange={setTime} />
+          </View>
+          {!!errors.date && <Text style={styles.errText}>{errors.date}</Text>}
+
+          {showFreq && <>
+          <Text style={[styles.label, styles.gap]}>Frequência</Text>
+          <View style={styles.chips}>
+            {REMINDER_FREQUENCIES.map(f => {
+              const active = freq === f
+              return (
+                <TouchableOpacity
+                  key={f}
+                  style={[styles.chip, active && styles.chipActive]}
+                  onPress={() => setFreq(f)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{f}</Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+          </>}
+
+          <View style={[styles.labelRow, styles.gap]}>
+            <Text style={styles.label}>Descrição (opcional)</Text>
+            <Text style={styles.counter}>{notes.length}/{NOTES_MAX}</Text>
+          </View>
+          <TextInput
+            style={[styles.input, styles.textarea]}
+            placeholder="Adicione mais detalhes sobre o lembrete..."
+            placeholderTextColor={colors.grayLight}
+            value={notes}
+            onChangeText={setNotes}
+            multiline
+            maxLength={NOTES_MAX}
+            textAlignVertical="top"
+            accessibilityLabel="Descrição"
+          />
+
+          <Text style={[styles.label, styles.gap]}>Cor do lembrete</Text>
+          <View style={styles.colors}>
+            {REMINDER_COLORS.map(c => {
+              const active = color === c.value
+              return (
+                <TouchableOpacity
+                  key={c.value}
+                  style={[styles.colorRing, active && { borderColor: c.value }]}
+                  onPress={() => setColor(c.value)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={c.label}
+                >
+                  <View style={[styles.colorDot, { backgroundColor: c.value }]}>
+                    {active && <Icon name="check" color={colors.white} size={14} />}
+                  </View>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+          <View style={[styles.notify, styles.gap]}>
+            <View style={styles.catIcon}>
+              <Icon name="bell" color={colors.primary} size={15} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.notifyTitle}>Receber notificação</Text>
+              <Text style={styles.notifyText}>Ative para receber um aviso no horário do lembrete.</Text>
+            </View>
+            <Switch
+              value={notify}
+              onValueChange={setNotify}
+              trackColor={{ false: colors.line, true: colors.primarySoft }}
+              thumbColor={notify ? colors.primary : colors.white}
+              {...Platform.select({ web: { activeThumbColor: colors.primary } })}
+              accessibilityLabel="Receber notificação"
+            />
           </View>
 
-          <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-            <Icon name="check" color={colors.white} size={18} />
-            <Text style={styles.saveBtnText}>Salvar Lembrete</Text>
-          </TouchableOpacity>
-          <Copyright />
+
+          <View style={styles.footer}>
+            <TouchableOpacity style={[styles.footerBtn, styles.cancelBtn]} onPress={() => navigation.goBack()} accessibilityRole="button">
+              <Text style={styles.cancelText}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.footerBtn, styles.saveBtn]} onPress={handleSave} activeOpacity={0.85} accessibilityRole="button">
+              <Text style={styles.saveText}>Salvar lembrete</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
+
       </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 16,
+    paddingHorizontal: 16, paddingVertical: 12,
   },
-  backBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center',
-  },
-  headerTitle: { fontSize: 18, fontFamily: fonts.extraBold, color: colors.white },
-  body: { padding: 20, gap: 8, paddingBottom: 40 },
-  label: { fontSize: 10, fontFamily: fonts.extraBold, color: colors.textMuted, letterSpacing: 1, marginTop: 8 },
+  headerBtn:   { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 18, fontFamily: fonts.extraBold, color: colors.black },
+  body: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24 },
+  label:    { fontSize: 14, fontFamily: fonts.semiBold, color: colors.inkSoft, marginBottom: 6 },
+  labelRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  counter:  { fontSize: 12, fontFamily: fonts.regular, color: colors.gray },
+  gap:      { marginTop: 22 },
+  row:      { flexDirection: 'row', gap: 12 },
   input: {
-    backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.border,
-    borderRadius: radius.input, paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 13, color: colors.text, fontFamily: fonts.regular,
+    height: 46, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line,
+    borderRadius: radius.input, paddingHorizontal: 14, paddingVertical: 0,
+    fontSize: 15, color: colors.ink, fontFamily: fonts.regular,
+    ...Platform.select({ web: { outlineStyle: 'none' } }),
   },
   inputErr: { borderColor: colors.danger },
-  errText: { fontSize: 11, color: colors.danger, fontFamily: fonts.bold, paddingLeft: 6 },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  textarea: { height: 84, paddingTop: 12, paddingBottom: 12 },
+  errText:  { fontSize: 12, color: colors.danger, fontFamily: fonts.semiBold, marginTop: 5, paddingLeft: 2 },
+
+  cats: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  cat: {
+    flexBasis: '47%', flexGrow: 1, minWidth: 160, flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderColor: colors.line, borderRadius: 14, backgroundColor: colors.white,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  catActive: { backgroundColor: colors.primaryPale, borderColor: colors.primary },
+  catIcon: {
+    width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(218,29,107,0.14)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  catText: { flex: 1, fontSize: 13, fontFamily: fonts.semiBold, color: colors.ink },
+  radio: {
+    width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: colors.grayLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  radioActive: { borderColor: colors.primary },
+  radioDot:    { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
+
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
-    borderRadius: 50, borderWidth: 1.5, borderColor: colors.border,
-    paddingHorizontal: 14, paddingVertical: 7,
+    height: 28, paddingHorizontal: 12, borderRadius: 14, justifyContent: 'center',
+    borderWidth: 1, borderColor: colors.line, backgroundColor: colors.white,
   },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 12, fontFamily: fonts.extraBold, color: colors.primary },
-  colorsRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
-  colorDot: { width: 32, height: 32, borderRadius: 16 },
-  colorDotSel: { borderWidth: 3, borderColor: colors.text },
-  saveBtn: {
-    backgroundColor: colors.primary, borderRadius: 50,
-    paddingVertical: 15, flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 20,
+  chipActive:     { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText:       { fontSize: 12, fontFamily: fonts.semiBold, color: colors.gray },
+  chipTextActive: { color: colors.white },
+
+  notify: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.primaryPale, borderRadius: 14, padding: 12,
   },
-  saveBtnText: { color: colors.white, fontFamily: fonts.extraBold, fontSize: 15 },
+  notifyTitle: { fontSize: 14, fontFamily: fonts.semiBold, color: colors.ink },
+  notifyText:  { fontSize: 12, lineHeight: 15, fontFamily: fonts.regular, color: colors.blackSoft, marginTop: 2 },
+
+  colors: { flexDirection: 'row', gap: 12 },
+  colorRing: {
+    width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: 'transparent',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  colorDot: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+
+  footer: { flexDirection: 'row', gap: 12, marginTop: 28 },
+  footerBtn:  { flex: 1, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  cancelBtn:  { borderWidth: 1.5, borderColor: colors.primary },
+  cancelText: { fontSize: 14, fontFamily: fonts.bold, color: colors.primary },
+  saveBtn:    { backgroundColor: colors.primary },
+  saveText:   { fontSize: 14, fontFamily: fonts.bold, color: colors.white },
 })

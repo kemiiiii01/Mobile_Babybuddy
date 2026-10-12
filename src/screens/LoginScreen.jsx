@@ -60,11 +60,7 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.subtitle}>Digite seus dados para acessar sua conta</Text>
 
             {/* Erro do backend */}
-            {!!authError && (
-              <View style={styles.errorBox} accessibilityRole="alert">
-                <Text style={styles.errorBoxText}>{authError}</Text>
-              </View>
-            )}
+            {!!authError && <Text style={styles.authError} accessibilityRole="alert">{authError}</Text>}
 
             {/* E-mail */}
             <Text style={styles.label}>E-mail</Text>
@@ -157,7 +153,7 @@ export default function LoginScreen({ navigation }) {
             </View>
           </View>
 
-          <Copyright />
+          <Copyright style={styles.copyright} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -166,9 +162,10 @@ export default function LoginScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: colors.background },
-  scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  scroll: { flexGrow: 1, alignItems: 'center', padding: 20 },
+  copyright: { marginTop: 0 },
   card: {
-    width: '100%', maxWidth: 440,
+    width: '100%', maxWidth: 440, marginVertical: 'auto',
     backgroundColor: colors.white, borderRadius: 24,
     paddingHorizontal: 22, paddingVertical: 28,
     shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 8 },
@@ -179,11 +176,7 @@ const styles = StyleSheet.create({
     fontSize: 14, lineHeight: 19, color: colors.gray, fontFamily: fonts.medium,
     textAlign: 'center', marginTop: 4, marginBottom: 22,
   },
-  errorBox: {
-    backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.primarySoft,
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 16,
-  },
-  errorBoxText: { fontSize: 13, color: colors.danger, fontFamily: fonts.semiBold, textAlign: 'center' },
+  authError: { fontSize: 13, color: colors.danger, fontFamily: fonts.semiBold, textAlign: 'center', marginBottom: 14 },
   label:    { fontSize: 14, color: colors.inkSoft, fontFamily: fonts.semiBold, marginBottom: 6 },
   labelGap: { marginTop: 14 },
   field: {

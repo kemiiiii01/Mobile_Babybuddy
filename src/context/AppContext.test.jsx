@@ -1,4 +1,5 @@
 import React from 'react'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { renderHook, act, waitFor } from '@testing-library/react-native'
 import { AppProvider, useApp } from './AppContext'
 import SecureStorage from '../infrastructure/storage/SecureStorage'
@@ -10,7 +11,7 @@ import {
   trocarSenha,
   excluirConta,
 } from '../application/auth'
-import { registrarCompromisso, removerCompromisso } from '../application/agenda'
+import { registrarCompromisso, removerCompromisso, listarCompromissos } from '../application/agenda'
 import { notifyUnauthorized } from '../infrastructure/http/unauthorizedHandler'
 
 jest.mock('../infrastructure/storage/SecureStorage', () => ({
@@ -221,5 +222,43 @@ describe('AppContext — Agenda (lembretes e eventos)', () => {
 
     expect(result.current.reminders[0].done).toBe(true)
     expect(registrarCompromisso).not.toHaveBeenCalled()
+  })
+})
+
+describe('AppContext — compromissos vindos do servidor', () => {
+  // o primeiro teste grava no armazenamento do aparelho; limpa para o seguinte começar vazio
+  afterEach(async () => { jest.clearAllMocks(); await AsyncStorage.clear() })
+
+  it('ao entrar, traz para o aparelho os compromissos que só existem no servidor', async () => {
+    autenticarUsuario.mockResolvedValue(USUARIO)
+    listarCompromissos.mockResolvedValue([
+      { id: 7, title: 'Consulta obstetra', date: '2026-10-15', time: '10:00', informacao: 'Levar exames', tipoEvento: 'consulta', statusAgenda: 'AGENDADO' },
+      { id: 8, title: 'Chá de bebê', date: '2026-11-01', time: '', informacao: null, tipoEvento: 'outro', statusAgenda: 'AGENDADO' },
+    ])
+    const { result } = setup()
+    await waitFor(() => expect(result.current.authLoading).toBe(false))
+
+    await act(async () => { await result.current.login('lorena@a.com', '123') })
+
+    await waitFor(() => expect(result.current.reminders).toHaveLength(1))
+    expect(listarCompromissos).toHaveBeenCalledWith(USUARIO.id)
+    expect(result.current.reminders[0]).toMatchObject({ remoteId: 7, title: 'Consulta obstetra', cat: 'Consulta', notes: 'Levar exames' })
+    expect(result.current.events).toEqual([expect.objectContaining({ remoteId: 8, title: 'Chá de bebê' })])
+    // o que veio do servidor não é reenviado para lá
+    expect(registrarCompromisso).not.toHaveBeenCalled()
+  })
+
+  it('sem rede, o login funciona normalmente só com os dados do aparelho', async () => {
+    autenticarUsuario.mockResolvedValue(USUARIO)
+    listarCompromissos.mockRejectedValue(new Error('Network Error'))
+    const { result } = setup()
+    await waitFor(() => expect(result.current.authLoading).toBe(false))
+
+    let ok
+    await act(async () => { ok = await result.current.login('lorena@a.com', '123') })
+
+    expect(ok).toBe(true)
+    expect(result.current.reminders).toEqual([])
+    expect(result.current.events).toEqual([])
   })
 })

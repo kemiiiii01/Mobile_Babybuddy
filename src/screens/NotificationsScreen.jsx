@@ -1,94 +1,93 @@
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
+import { useEffect, useState } from 'react'
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Switch, Platform } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useApp } from '../context/AppContext'
 import { Icon } from '../components/Icon'
-import { Copyright } from '../components/Copyright'
 import { colors, fonts } from '../theme'
 
-function fmtDate(iso) {
-  if (!iso) return ''
-  const [y, m, d] = iso.split('-')
-  return `${d}/${m}/${y}`
-}
+const SWITCH_ON = '#34C759'
+const SECTIONS = [
+  { title: 'CALENDÁRIO', items: [{ key: 'calendar', label: 'Eventos/Lembretes' }] },
+  { title: 'NOTIFICAÇÕES DO APP', items: [{ key: 'general', label: 'Geral' }, { key: 'custom', label: 'Personalizadas' }] },
+]
+const DEFAULTS = { calendar: true, general: true, custom: true }
 
 export default function NotificationsScreen({ navigation }) {
-  const { reminders, events } = useApp()
+  const { currentUser } = useApp()
+  const [prefs, setPrefs] = useState(DEFAULTS)
+  // As preferências ficam guardadas no aparelho, por conta.
+  const storageKey = currentUser?.email ? `${currentUser.email}_notificationPrefs` : null
 
-  const upcoming = [
-    ...reminders.filter(r => !r.done).map(r => ({
-      id: `r_${r.id}`, type: 'reminder', title: r.title,
-      subtitle: [r.time, fmtDate(r.date)].filter(Boolean).join(' · '),
-      color: r.color || colors.primary, cat: r.cat,
-    })),
-    ...events.map(e => ({
-      id: `e_${e.id}`, type: 'event', title: e.title,
-      subtitle: [fmtDate(e.date), e.time].filter(Boolean).join(' · '),
-      color: colors.primary, cat: 'Evento',
-    })),
-  ]
+  useEffect(() => {
+    if (!storageKey) return
+    let active = true
+    AsyncStorage.getItem(storageKey)
+      .then(raw => { if (active && raw) setPrefs({ ...DEFAULTS, ...JSON.parse(raw) }) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [storageKey])
+
+  function toggle(key, value) {
+    const next = { ...prefs, [key]: value }
+    setPrefs(next)
+    if (storageKey) AsyncStorage.setItem(storageKey, JSON.stringify(next)).catch(() => {})
+  }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient colors={[colors.primary, colors.primaryDark]} style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Icon name="back" color={colors.white} size={20} />
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} accessibilityLabel="Voltar">
+          <Icon name="back" color={colors.black} size={26} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notificações</Text>
-        <View style={{ width: 36 }} />
-      </LinearGradient>
+        <Text style={styles.headerTitle} accessibilityRole="header">Notificações</Text>
+        <View style={styles.backBtn} />
+      </View>
 
-      <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 20 }}>
-        {upcoming.length === 0 ? (
-          <View style={styles.empty}>
-            <Icon name="bell" color={colors.placeholder} size={40} />
-            <Text style={styles.emptyTitle}>Sem notificações</Text>
-            <Text style={styles.emptySub}>Seus lembretes e eventos aparecerão aqui</Text>
-          </View>
-        ) : (
-          upcoming.map(item => (
-            <View key={item.id} style={[styles.card, { borderLeftColor: item.color }]}>
-              <View style={[styles.iconWrap, { backgroundColor: item.color + '20' }]}>
-                <Icon name={item.type === 'reminder' ? 'bell' : 'cal'} color={item.color} size={18} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                {!!item.subtitle && <Text style={styles.cardSub}>{item.subtitle}</Text>}
-                <View style={styles.tag}>
-                  <Text style={[styles.tagText, { color: item.color }]}>{item.cat}</Text>
+      <ScrollView contentContainerStyle={styles.body}>
+        {SECTIONS.map(section => (
+          <View key={section.title}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <View style={styles.group}>
+              {section.items.map(item => (
+                <View key={item.key} style={styles.row}>
+                  <Text style={styles.rowLabel}>{item.label}</Text>
+                  <Switch
+                    value={prefs[item.key]}
+                    onValueChange={value => toggle(item.key, value)}
+                    trackColor={{ false: colors.line, true: SWITCH_ON }}
+                    thumbColor={colors.white}
+                    ios_backgroundColor={colors.line}
+                    {...Platform.select({ web: { activeThumbColor: colors.white } })}
+                    accessibilityLabel={item.label}
+                  />
                 </View>
-              </View>
+              ))}
             </View>
-          ))
-        )}
-        <Copyright />
+          </View>
+        ))}
       </ScrollView>
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.grayBg },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 16,
+    paddingHorizontal: 16, paddingVertical: 12,
   },
-  backBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center',
+  backBtn:     { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 18, fontFamily: fonts.extraBold, color: colors.black },
+  body: { paddingTop: 20, paddingBottom: 24 },
+  sectionTitle: {
+    fontSize: 12, fontFamily: fonts.medium, color: colors.gray, letterSpacing: 0.6,
+    paddingHorizontal: 16, marginTop: 20, marginBottom: 8,
   },
-  headerTitle: { fontSize: 18, fontFamily: fonts.extraBold, color: colors.white },
-  empty: { alignItems: 'center', padding: 28, gap: 8 },
-  emptyTitle: { fontSize: 14, fontFamily: fonts.extraBold, color: colors.textMuted },
-  emptySub: { fontSize: 12, color: colors.placeholder, fontFamily: fonts.semiBold, textAlign: 'center' },
-  card: {
-    backgroundColor: colors.white, borderRadius: 18, padding: 14, marginBottom: 10,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderLeftWidth: 4,
-    shadowColor: colors.primary, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+  group: { backgroundColor: colors.white, paddingVertical: 4 },
+  row: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    minHeight: 48, paddingHorizontal: 16,
   },
-  iconWrap: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  cardTitle: { fontSize: 13, fontFamily: fonts.extraBold, color: colors.text, marginBottom: 2 },
-  cardSub: { fontSize: 11, color: colors.textMuted, fontFamily: fonts.semiBold, marginBottom: 4 },
-  tag: { backgroundColor: colors.surface, borderRadius: 50, paddingHorizontal: 10, paddingVertical: 2, alignSelf: 'flex-start' },
-  tagText: { fontSize: 10, fontFamily: fonts.extraBold },
+  rowLabel: { fontSize: 15, fontFamily: fonts.medium, color: colors.black },
 })

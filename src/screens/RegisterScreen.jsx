@@ -1,7 +1,7 @@
 import { forwardRef, useRef, useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, useWindowDimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useApp } from '../context/AppContext'
@@ -63,6 +63,8 @@ const Field = forwardRef(function Field({ label, icon, error, secure, style, onF
 
 export default function RegisterScreen({ navigation }) {
   const { register, authLoading, authError, setAuthError } = useApp()
+  // em telas estreitas o texto de exemplo mais longo não cabe no campo
+  const narrow = useWindowDimensions().width < 360
 
   const [nome, setNome]         = useState('')
   const [email, setEmail]       = useState('')
@@ -150,11 +152,7 @@ export default function RegisterScreen({ navigation }) {
             <Text style={styles.subtitle}>Preencha os campos abaixo para se cadastrar</Text>
 
             {/* Erro backend */}
-            {!!authError && (
-              <View style={styles.errorBox} accessibilityRole="alert">
-                <Text style={styles.errorBoxText}>{authError}</Text>
-              </View>
-            )}
+            {!!authError && <Text style={styles.authError} accessibilityRole="alert">{authError}</Text>}
 
             <Field
               label="Nome completo" icon="user" error={nomeErr}
@@ -225,7 +223,7 @@ export default function RegisterScreen({ navigation }) {
             <Field
               ref={confRef} style={styles.fieldGap}
               label="Confirmar senha" icon="lock" error={confErr} secure
-              placeholder="Digite sua senha novamente"
+              placeholder={narrow ? 'Repita a senha' : 'Digite sua senha novamente'}
               value={confirm}
               onChangeText={v => { setConfirm(v); setConfErr('') }}
               autoCapitalize="none"
@@ -296,7 +294,7 @@ export default function RegisterScreen({ navigation }) {
             </View>
           </View>
 
-          <Copyright />
+          <Copyright style={styles.copyright} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -305,9 +303,10 @@ export default function RegisterScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: colors.background },
-  scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  scroll: { flexGrow: 1, alignItems: 'center', padding: 20 },
+  copyright: { marginTop: 0 },
   card: {
-    width: '100%', maxWidth: 440,
+    width: '100%', maxWidth: 440, marginVertical: 'auto',
     backgroundColor: colors.white, borderRadius: 24,
     paddingHorizontal: 22, paddingVertical: 26,
     shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 8 },
@@ -318,11 +317,7 @@ const styles = StyleSheet.create({
     fontSize: 14, lineHeight: 19, color: colors.gray, fontFamily: fonts.medium,
     textAlign: 'center', marginTop: 4, marginBottom: 20,
   },
-  errorBox: {
-    backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.primarySoft,
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 16,
-  },
-  errorBoxText: { fontSize: 13, color: colors.danger, fontFamily: fonts.semiBold, textAlign: 'center' },
+  authError: { fontSize: 13, color: colors.danger, fontFamily: fonts.semiBold, textAlign: 'center', marginBottom: 14 },
   label:    { fontSize: 14, color: colors.inkSoft, fontFamily: fonts.semiBold, marginBottom: 6 },
   fieldGap: { marginTop: 12 },
   field: {
