@@ -5,7 +5,7 @@ import { useApp } from '../context/AppContext'
 import { Icon } from '../components/Icon'
 import { WeeksCircle } from '../components/WeeksCircle'
 import { colors, fonts, layout } from '../theme'
-import { plural } from '../constants/gestation'
+import { GESTATION_DAYS, plural } from '../constants/gestation'
 import { CARE_SLOT_MS, STORIES, STORY_ORDER, careSlot, gestationMonth, gestationToday } from '../constants/stories'
 import { useSeenStories } from '../hooks/useSeenStories'
 
@@ -76,7 +76,7 @@ export default function HomeScreen({ navigation }) {
             : 'Configurar a gestação em Dados Pessoais'}
         >
           {/* O círculo destaca as semanas e o mês; a imagem do bebê fica no story "Seu bebê". */}
-          <WeeksCircle weeks={gestation?.weeks} size={pictureSize}>
+          <WeeksCircle weeks={gestation?.weeks} progress={gestation ? gestation.days / GESTATION_DAYS : 0} size={pictureSize}>
             <Text style={styles.pictureSetup}>Toque para configurar{'\n'}a sua gestação</Text>
           </WeeksCircle>
         </TouchableOpacity>
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   weekDayTextToday: { fontFamily: fonts.bold, color: colors.white },
 
   picture: { alignSelf: 'center', marginTop: 58 },
-  pictureSetup:   { fontSize: 15, lineHeight: 20, fontFamily: fonts.bold, color: colors.white, textAlign: 'center' },
+  pictureSetup:   { fontSize: 15, lineHeight: 20, fontFamily: fonts.bold, color: colors.primary, textAlign: 'center' },
 
   daily: { marginTop: 56 },
   sectionTitle: { fontSize: 19, fontFamily: fonts.bold, color: colors.black },
